@@ -1,0 +1,1895 @@
+pn_modselect_step <-
+structure(function # Backwards Stepwise Selection of Positive-Negative Richards \eqn{nlslist} Models
+                               (x,
+                                ### a numeric vector of the primary predictor
+                                y,
+                                ### a numeric vector of the response variable
+                                grp,
+                                ### a factor of same length as x and y that distinguishes groups within
+                                ### the dataset
+                                forcemod = 0,
+                                ### optional numeric value to constrain model selection (see Details)
+                                existing = FALSE,
+                                ### optional logical value specifying whether some of the relevant models
+                                ### have already been fitted
+                                penaliz = "1/sqrt(n)"
+                                ### optional character value to determine how models are ranked (see Details)
+                                ) {
+##decription<< This function performs backawards stepwise model selection for \code{\link{nlsList}}
+## models fitted using
+## \code{\link{SSposnegRichards}}. 
+## details<< First, whether parameter M should be fixed
+## (see \code{\link{SSposnegRichards}}) is determined by fitting models 12 and 20 and comparing
+## their perfomance using \code{\link{extraF}}.
+## If model 12 provides superior performance (variable values of  M) then 16 models that estimate M
+## are run
+## (models 1 through 16), otherwise the models with fixed M are fitted (models 21 through 36).
+## Model selection then proceeds by fitting the most general model (8-parameter, model 1 for variable M;
+## 7-parameter, model 21 for fixed M). At each subsequent step a more reduced model is evaluated
+## by creating \code{\link{nlsList}} models through removal of a single parameter from the decreasing
+## section of the curve (i.e. RAsym, Rk, Ri or RM). This is repeated until all possible models with
+## one less parameter have been fitted and then these models are then ranked by modified pooled residual
+## standard error (see below) to determine which reduced parameter model provides the best fit.
+## The best reduced parameter model is then compared with the more general model retained from the
+## the previous step using the function \code{\link{extraF}} to determine whether the more general
+## model provides significant improvement over the best reduced model. The most appropriate model
+## is then retained to be used as the general model in the next step. This process continues
+## for up to six steps (all steps will be attempted even if the general model provides better
+## performance to allow for much more reduced models to also be evaluated). The most reduced model
+## possible to evaluate in this function contains only parameters for the positive section of the curve
+## (4-parameters for variable M, 3-parameters for fixed M).
+##
+## Fitting these \code{\link{nlsList}} models can be time-consuming (2-4 hours using the dataset
+## \code{\link{posneg_data}} that encompasses 100 individuals) and if several of the relevant
+## models are already fitted the option existing=TRUE can be used to avoid refitting models that
+## already exist globally (note that a model object in which no grouping levels were successfully
+## parameterized will be refitted, as will objects that are not of class nlsList).
+##
+## Specifying forcemod=3 will force model selection to only consider fixed M models and setting
+## forcemod=4 will force model selection to consider models with varying values of M only.
+## If fitting both models
+## 12 and 20 fails, fixed M models will be used by default.
+##
+## Models are ranked by modified pooled residual square error. By default residual standard error
+## is divided by the square root of sample size. This exponentially penalizes models for which very few
+## grouping levels (individuals) are successfully parameterized (the few individuals that are
+## parameterized in these models are fit unsuprisingly well) using a function based on the relationship
+## between standard error and sample size. However, different users may have different preferences
+## and these can be specified in the argument penaliz (which residual
+## standard error is multiplied by). This argument must be a character value
+## that contains the character n (sample size) and must be a valid right hand side (RHS) of a formula:
+## e.g. 1*(n), (n)^2. It cannot contain more than one n but could be a custom function, e.g. FUN(n).
+    testit <- try(library(nlme), silent = TRUE)
+    if (class(testit)[1] == "try-error")
+        stop("please load library: nlme")
+    checkpen <- try(unlist(strsplit(penaliz, "(n)")), silent = TRUE)
+    if (length(checkpen) != 2 | class(checkpen)[1] == "try-error") {
+        stop("penaliz parameter is ill defined: see ?pn_mod_compare")
+    } else {
+        checkpen <- try(eval(parse(text = sprintf("%s", paste(checkpen[1],
+            "1", checkpen[2], sep = "")))))
+        if (class(checkpen)[1] == "try-error")
+            stop("penaliz parameter is ill defined: see ?pn_mod_compare")
+    }
+    datamerg <- data.frame(x, y, grp)
+    userdata <- groupedData(y ~ x | grp, outer = ~grp, data = datamerg)
+    testbounds <- 1
+    testpar <- 1
+    is.na(testbounds) <- TRUE
+    is.na(testpar) <- TRUE
+    testbounds <- try(get("pnmodelparamsbounds", envir = .GlobalEnv),
+        silent = TRUE)
+    testpar <- try(get("pnmodelparams", envir = .GlobalEnv),
+        silent = TRUE)
+    if (class(testbounds)[1] == "try-error" | class(testpar)[1] ==
+        "try-error" | is.na(testbounds[1]) == TRUE | is.na(testpar[1]) ==
+        TRUE)
+        try(modpar(datamerg[1], datamerg[2]), silent = FALSE)
+    extraF <- try(get("extraF", envir = .GlobalEnv), silent = TRUE)
+    if (class(extraF)[1] == "try-error") {
+        stop("cannot find function: extraF")
+    }
+    mostreducedmod<-1
+    print("checking fit of positive section of the curve for variable M*************************************")
+    richardsR12.lis <- try(get("richardsR12.lis", envir = .GlobalEnv),
+        silent = TRUE)
+    if (class(richardsR12.lis)[1] == "try-error" | existing ==
+        FALSE)
+        richardsR12.lis <- try(nlsList(y ~ SSposnegRichards(x,
+            Asym = Asym, K = K, Infl = Infl, M = M, RAsym = 1,
+            Rk = 1, Ri = 1, RM = 1, modno = 12), data = userdata),
+            silent = TRUE)
+    print("checking fit of positive section of the curve for fixed M*************************************")
+    pnmodelparams <- get("pnmodelparams", envir = .GlobalEnv)
+    change.pnparameters <- try(get("change.pnparameters", envir = .GlobalEnv),
+        silent = TRUE)
+    dummy <- try(change.pnparameters(M = (fixef(richardsR12.lis)[4])),
+        silent = TRUE)
+    richardsR20.lis <- try(get("richardsR20.lis", envir = .GlobalEnv),
+        silent = TRUE)
+    if (class(richardsR20.lis)[1] == "try-error" | existing ==
+        FALSE)
+        richardsR20.lis <- try(nlsList(y ~ SSposnegRichards(x,
+            Asym = Asym, K = K, Infl = Infl, M = 1, RAsym = 1,
+            Rk = 1, Ri = 1, RM = 1, modno = 20), data = userdata),
+            silent = TRUE)
+    if ((class(richardsR20.lis)[1]) == "try-error" | class(richardsR20.lis)[[1]] != "nlsList" ) {
+        print("3 parameter positive richards model failed*************************************")
+        forcemod = 4
+        richardsR20.lis <- 1
+    } else {
+        if (is.null(nrow(coef(richardsR20.lis))) == TRUE){
+             print("3 parameter positive richards model failed*************************************")
+	     forcemod = 4
+             richardsR20.lis <- 1
+        }
+    }
+    if ((class(richardsR12.lis)[1]) == "try-error" | class(richardsR12.lis)[[1]] != "nlsList" )
+        {
+            print("4 parameter positive richards model failed*************************************")
+            forcemod = 3
+            richardsR12.lis <- 1
+    } else {
+        if (is.null(nrow(coef(richardsR12.lis))) == TRUE){
+            print("4 parameter positive richards model failed*************************************")
+            forcemod = 3
+            richardsR12.lis <- 1
+        }
+    }
+    currentmodel <- 1
+    if (forcemod == 0) {
+        testmod <- try(extraF(richardsR20.lis, richardsR12.lis))
+        if (class(testmod) == "try-error") {
+            modelsig = 0.1
+        } else {
+            modelsig = testmod[4]
+            if ((testmod[4]) > 0.05 & (testmod[5]) > (testmod[6])) {
+                currentmodel <- richardsR20.lis
+                mostreducednm <- substr("richardsR20.lis", 10,
+                  11)
+            } else {
+                currentmodel <- richardsR12.lis
+                mostreducednm <- substr("richardsR12.lis", 10,
+                  11)
+            }
+        }
+    }
+    mostreducedmod <- currentmodel
+    if (forcemod == 3)
+        {
+            modelsig = 0.05
+        }
+    if (forcemod == 4)
+        {
+            modelsig = 0.1
+        }
+    if (modelsig > 0.05) {
+        print("Variable M models most appropriate*************************************")
+    } else {
+        print("Fixed M models most appropriate*************************************")
+    }
+    rankmod <- function(model1 = 1, model2 = 1, model3 = 1, model4 = 1) {
+        nm <- rep(0, 4)
+        nm[1] <- (as.character(substitute(model1)))
+        nm[2] <- (as.character(substitute(model2)))
+        nm[3] <- (as.character(substitute(model3)))
+        nm[4] <- (as.character(substitute(model4)))
+        if (class(model1)[[1]] == "nlsList" & class(model1)[1] !=
+            "try-error") {
+            if (is.null(nrow(coef(model1))) == TRUE) {
+                model1 <- 1
+            }
+        }
+        if (class(model2)[[1]] == "nlsList" & class(model2)[1] !=
+            "try-error") {
+            if (is.null(nrow(coef(model2))) == TRUE) {
+                model2 <- 1
+            }
+        }
+        if (class(model3)[[1]] == "nlsList" & class(model3)[1] !=
+            "try-error") {
+            if (is.null(nrow(coef(model3))) == TRUE) {
+                model3 <- 1
+            }
+        }
+        if (class(model4)[[1]] == "nlsList" & class(model4)[1] !=
+            "try-error") {
+            if (is.null(nrow(coef(model4))) == TRUE) {
+                model4 <- 1
+            }
+        }
+        modrank <- data.frame(modno = c(1, 2, 3, 4), rank = rep(-999,
+            4))
+        nomods <- 4
+        RSEstr <- "RSE"
+        dfstr <- "df"
+        usefun <- unlist(strsplit(penaliz, "(n)"))
+        if (class(model1)[[1]] == "nlsList" & class(model1)[1] !=
+            "try-error") {
+            evfun <- parse(text = sprintf("%s", paste("summary(model1)[['",
+                RSEstr, "']]*(", usefun[1], "1+sum( summary(model1)[['",
+                dfstr, "']],na.rm=TRUE))", usefun[2], sep = "")))
+            modrank[1, 2] <- eval(evfun)
+        } else {
+            nomods = nomods - 1
+        }
+        if (class(model2)[[1]] == "nlsList" & class(model2)[1] !=
+            "try-error") {
+            evfun <- parse(text = sprintf("%s", paste("summary(model2)[['",
+                RSEstr, "']]*(", usefun[1], "1+sum( summary(model2)[['",
+                dfstr, "']],na.rm=TRUE))", usefun[2], sep = "")))
+            modrank[2, 2] <- eval(evfun)
+        } else {
+            nomods = nomods - 1
+        }
+        if (class(model3)[[1]] == "nlsList" & class(model3)[1] !=
+            "try-error") {
+            evfun <- parse(text = sprintf("%s", paste("summary(model3)[['",
+                RSEstr, "']]*(", usefun[1], "1+sum( summary(model3)[['",
+                dfstr, "']],na.rm=TRUE))", usefun[2], sep = "")))
+            modrank[3, 2] <- eval(evfun)
+        } else {
+            nomods = nomods - 1
+        }
+        if (class(model4)[[1]] == "nlsList" & class(model4)[1] !=
+            "try-error") {
+            evfun <- parse(text = sprintf("%s", paste("summary(model4)[['",
+                RSEstr, "']]*(", usefun[1], "1+sum( summary(model4)[['",
+                dfstr, "']],na.rm=TRUE))", usefun[2], sep = "")))
+            modrank[4, 2] <- eval(evfun)
+        } else {
+            nomods = nomods - 1
+        }
+        if (nomods == 0) {
+            for (j in 1:4) {
+                if (modrank[j, 2] == -999 & nm[j] != 1)
+                  print(paste("Model", nm[j], "failed to converge for all individuals",
+                    sep = " "))
+            }
+            return(print("*************************************no models to evaluate*************************************"))
+        } else {
+            modnmsav = ""
+            for (j in 1:4) {
+                if (modrank[j, 2] == -999 & nm[j] != 1)
+                  print(paste("Model", nm[j], "failed to converge for all individuals",
+                    sep = " "))
+                if (j == 1)
+                  if (modrank[j, 2] != -999)
+                    modnmsav <- nm[j]
+                if (j > 1)
+                  if (modrank[j, 2] != -999)
+                    modnmsav <- paste(modnmsav, nm[j], sep = " vs. ")
+            }
+            print(paste("**************Ranking this step's models (all have same # parameters): ",
+                modnmsav, sep = ""))
+            modrank <- modrank[modrank[, 2] > -999, ]
+            modrank <- modrank[order(modrank[, 2], modrank[,
+                1]), ]
+            if (modrank[1, 1] == 1) {
+                model <- model1
+                submod <- as.character(substitute(model1))
+            }
+            if (modrank[1, 1] == 2) {
+                model <- model2
+                submod <- as.character(substitute(model2))
+            }
+            if (modrank[1, 1] == 3) {
+                model <- model3
+                submod <- as.character(substitute(model3))
+            }
+            if (modrank[1, 1] == 4) {
+                model <- model4
+                submod <- as.character(substitute(model4))
+            }
+            submod <- substr(submod, 10, 11)
+            assign("tempparam_select", submod, envir = globalenv())
+            return(model)
+        }
+    }
+    rncheck <- function(modname, existing = FALSE) {
+        modname <- as.character(substitute(modname))
+        assign("tempmodnm", modname, envir = globalenv())
+        modobj <- try(get(modname, envir = .GlobalEnv), silent = TRUE)
+        if (class(modobj)[1] == "try-error" | existing == FALSE |
+            class(modobj)[1] == "NULL") {
+            outp <- TRUE
+        } else {
+            outp <- FALSE
+        }
+        return(outp)
+    }
+    rncheckfirst <- function(modname, existing = FALSE) {
+        modname <- as.character(substitute(modname))
+        modobj <- try(get(modname, envir = .GlobalEnv), silent = TRUE)
+        if (class(modobj)[1] == "try-error" | existing == FALSE) {
+        } else {
+            return(modobj)
+        }
+    }
+    rnassign <- function() {
+        modname <- parse(text = sprintf("%s", get("tempmodnm",
+            envir = .GlobalEnv)))
+        if (class(eval(modname)[1]) != "try-error") {
+            chk <- try(unlist(summary(eval(modname)))["RSE"],
+                silent = TRUE)
+            if (class(chk)[1] == "try-error") {
+                return(1)
+            } else {
+                modnm <- sprintf("%s", get("tempmodnm", envir = .GlobalEnv))
+                assign("tempparam_select", substr(modnm, 10,
+                  11), envir = .GlobalEnv)
+                assign(modnm, eval(modname), envir = .GlobalEnv)
+                return(eval(modname))
+            }
+        } else {
+            return(1)
+        }
+    }
+    tstmod <- function(modelsub, modelcurrent) {
+        extraF <- try(get("extraF", envir = .GlobalEnv), silent = TRUE)
+        if (is.na(extraF(modelsub, modelcurrent)[4]) == FALSE) {
+            if ((extraF(modelsub, modelcurrent)[4]) > 0.05 &
+                get("legitmodel", envir = .GlobalEnv)[1] == "legitmodelreset") {
+                currentmodel <- modelsub
+                return(currentmodel)
+            } else {
+                if (get("legitmodel", envir = .GlobalEnv)[1] ==
+                  "legitmodelreset") {
+                  currentmodel <- modelcurrent
+                  return(currentmodel)
+                } else {
+                  currentmodel <- get("legitmodel", envir = .GlobalEnv)
+                  return(currentmodel)
+                }
+            }
+        } else {
+            if (get("legitmodel", envir = .GlobalEnv)[1] == "legitmodelreset") {
+                currentmodel <- modelcurrent
+                return(currentmodel)
+            } else {
+                currentmodel <- get("legitmodel", envir = .GlobalEnv)
+                return(currentmodel)
+            }
+        }
+    }
+    cnt <- 1
+    step1submod <- FALSE
+    step5submod <- FALSE
+    assign("tempparam_select", "NONE", envir = globalenv())
+    while (cnt < 6) {
+        if (modelsig > 0.05) {
+            if (cnt == 1) {
+                print("Step 1 of a maximum of 6*********************************************************************")
+                print("--ASSESSING MODEL: richardsR1.lis  --")
+                richardsR1.lis <- rncheckfirst(richardsR1.lis,
+                  existing = existing)
+                if (rncheck(richardsR1.lis, existing = existing) ==
+                  TRUE)
+                  richardsR1.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = M, RAsym = RAsym,
+                      Rk = Rk, Ri = Ri, RM = RM, modno = 1),
+                      data = userdata)
+                  }, silent = TRUE)
+                currentmodel <- rnassign()
+                if (class(currentmodel)[1] != "numeric")
+                  step1submod <- TRUE
+            }
+            if (cnt == 2) {
+                print("Step 2 of a maximum of 6*********************************************************************")
+                print("--ASSESSING MODEL: richardsR2.lis  --")
+                richardsR2.lis <- rncheckfirst(richardsR2.lis,
+                  existing = existing)
+                if (rncheck(richardsR2.lis, existing = existing) ==
+                  TRUE)
+                  richardsR2.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = M, RAsym = RAsym,
+                      Rk = Rk, Ri = Ri, RM = 1, modno = 2), data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                print("--ASSESSING MODEL: richardsR7.lis  --")
+                richardsR7.lis <- rncheckfirst(richardsR7.lis,
+                  existing = existing)
+                if (rncheck(richardsR7.lis, existing = existing) ==
+                  TRUE)
+                  richardsR7.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = M, RAsym = 1, Rk = Rk,
+                      Ri = Ri, RM = RM, modno = 7), data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                print("--ASSESSING MODEL: richardsR6.lis  --")
+                richardsR6.lis <- rncheckfirst(richardsR6.lis,
+                  existing = existing)
+                if (rncheck(richardsR6.lis, existing = existing) ==
+                  TRUE)
+                  richardsR6.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = M, RAsym = RAsym,
+                      Rk = 1, Ri = Ri, RM = RM, modno = 6), data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                print("--ASSESSING MODEL: richardsR8.lis  --")
+                richardsR8.lis <- rncheckfirst(richardsR8.lis,
+                  existing = existing)
+                if (rncheck(richardsR8.lis, existing = existing) ==
+                  TRUE)
+                  richardsR8.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = M, RAsym = RAsym,
+                      Rk = Rk, Ri = 1, RM = RM, modno = 8), data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                submodel <- rankmod(richardsR2.lis, richardsR7.lis,
+                  richardsR6.lis, richardsR8.lis)
+                step2stat <- extraF(submodel, currentmodel)
+                currentmodel <- tstmod(submodel, currentmodel)
+            }
+            if (cnt == 3) {
+                print("Step 3 of a maximum of 6*********************************************************************")
+                currentmodID3 <- get("tempparam_select", envir = .GlobalEnv)
+                if (currentmodID3 == "NONE")
+                  currentmodID3 = "2."
+                if (currentmodID3 == "2.") {
+                  print("--ASSESSING MODEL: richardsR14.lis  --")
+                  richardsR14.lis <- rncheckfirst(richardsR14.lis,
+                    existing = existing)
+                  if (rncheck(richardsR14.lis, existing = existing) ==
+                    TRUE)
+                    richardsR14.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = Ri, RM = 1, modno = 14),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR13.lis  --")
+                  richardsR13.lis <- rncheckfirst(richardsR13.lis,
+                    existing = existing)
+                  if (rncheck(richardsR13.lis, existing = existing) ==
+                    TRUE)
+                    richardsR13.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 13),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR15.lis  --")
+                  richardsR15.lis <- rncheckfirst(richardsR15.lis,
+                    existing = existing)
+                  if (rncheck(richardsR15.lis, existing = existing) ==
+                    TRUE)
+                    richardsR15.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 15),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR14.lis, richardsR13.lis,
+                    richardsR15.lis)
+                  step3stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE")
+                  currentmodID3 = "7."
+                if (currentmodID3 == "7.") {
+                  print("--ASSESSING MODEL: richardsR14.lis  --")
+                  richardsR14.lis <- rncheckfirst(richardsR14.lis,
+                    existing = existing)
+                  if (rncheck(richardsR14.lis, existing = existing) ==
+                    TRUE)
+                    richardsR14.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = Ri, RM = 1, modno = 14),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR3.lis  --")
+                  richardsR3.lis <- rncheckfirst(richardsR3.lis,
+                    existing = existing)
+                  if (rncheck(richardsR3.lis, existing = existing) ==
+                    TRUE)
+                    richardsR3.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = RM, modno = 3),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR9.lis  --")
+                  richardsR9.lis <- rncheckfirst(richardsR9.lis,
+                    existing = existing)
+                  if (rncheck(richardsR9.lis, existing = existing) ==
+                    TRUE)
+                    richardsR9.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = RM, modno = 9),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR14.lis, richardsR3.lis,
+                    richardsR9.lis)
+                  step3stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE")
+                  currentmodID3 = "6."
+                if (currentmodID3 == "6.") {
+                  print("--ASSESSING MODEL: richardsR13.lis  --")
+                  richardsR13.lis <- rncheckfirst(richardsR13.lis,
+                    existing = existing)
+                  if (rncheck(richardsR13.lis, existing = existing) ==
+                    TRUE)
+                    richardsR13.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 13),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR3.lis  --")
+                  richardsR3.lis <- rncheckfirst(richardsR3.lis,
+                    existing = existing)
+                  if (rncheck(richardsR3.lis, existing = existing) ==
+                    TRUE)
+                    richardsR3.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = RM, modno = 3),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR4.lis  --")
+                  richardsR4.lis <- rncheckfirst(richardsR4.lis,
+                    existing = existing)
+                  if (rncheck(richardsR4.lis, existing = existing) ==
+                    TRUE)
+                    richardsR4.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = RM, modno = 4),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR13.lis, richardsR3.lis,
+                    richardsR4.lis)
+                  step3stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE")
+                  currentmodID3 = "8."
+                if (currentmodID3 == "8.") {
+                  print("--ASSESSING MODEL: richardsR15.lis  --")
+                  richardsR15.lis <- rncheckfirst(richardsR15.lis,
+                    existing = existing)
+                  if (rncheck(richardsR15.lis, existing = existing) ==
+                    TRUE)
+                    richardsR15.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 15),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR9.lis  --")
+                  richardsR9.lis <- rncheckfirst(richardsR9.lis,
+                    existing = existing)
+                  if (rncheck(richardsR9.lis, existing = existing) ==
+                    TRUE)
+                    richardsR9.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = RM, modno = 9),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR4.lis  --")
+                  richardsR4.lis <- rncheckfirst(richardsR4.lis,
+                    existing = existing)
+                  if (rncheck(richardsR4.lis, existing = existing) ==
+                    TRUE)
+                    richardsR4.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = RM, modno = 4),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR15.lis, richardsR9.lis,
+                    richardsR4.lis)
+                  step3stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+            }
+            if (cnt == 4) {
+                print("Step 4 of a maximum of 6*********************************************************************")
+                currentmodID2 <- get("tempparam_select", envir = .GlobalEnv)
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "2."
+                  currentmodID2 = "14"
+                }
+                if (currentmodID3 == "2." & currentmodID2 ==
+                  "14") {
+                  print("--ASSESSING MODEL: richardsR10.lis  --")
+                  richardsR10.lis <- rncheckfirst(richardsR10.lis,
+                    existing = existing)
+                  if (rncheck(richardsR10.lis, existing = existing) ==
+                    TRUE)
+                    richardsR10.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 10),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR16.lis  --")
+                  richardsR16.lis <- rncheckfirst(richardsR16.lis,
+                    existing = existing)
+                  if (rncheck(richardsR16.lis, existing = existing) ==
+                    TRUE)
+                    richardsR16.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 16),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR10.lis, richardsR16.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "2."
+                  currentmodID2 = "13"
+                }
+                if (currentmodID3 == "2." & currentmodID2 ==
+                  "13") {
+                  print("--ASSESSING MODEL: richardsR10.lis  --")
+                  richardsR10.lis <- rncheckfirst(richardsR10.lis,
+                    existing = existing)
+                  if (rncheck(richardsR10.lis, existing = existing) ==
+                    TRUE)
+                    richardsR10.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 10),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR11.lis  --")
+                  richardsR11.lis <- rncheckfirst(richardsR11.lis,
+                    existing = existing)
+                  if (rncheck(richardsR11.lis, existing = existing) ==
+                    TRUE)
+                    richardsR11.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 11),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR10.lis, richardsR11.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "2."
+                  currentmodID2 = "15"
+                }
+                if (currentmodID3 == "2." & currentmodID2 ==
+                  "15") {
+                  print("--ASSESSING MODEL: richardsR16.lis  --")
+                  richardsR16.lis <- rncheckfirst(richardsR16.lis,
+                    existing = existing)
+                  if (rncheck(richardsR16.lis, existing = existing) ==
+                    TRUE)
+                    richardsR16.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 16),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR11.lis  --")
+                  richardsR11.lis <- rncheckfirst(richardsR11.lis,
+                    existing = existing)
+                  if (rncheck(richardsR11.lis, existing = existing) ==
+                    TRUE)
+                    richardsR11.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 11),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR16.lis, richardsR11.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "7."
+                  currentmodID2 = "14"
+                }
+                if (currentmodID3 == "7." & currentmodID2 ==
+                  "14") {
+                  print("--ASSESSING MODEL: richardsR10.lis  --")
+                  richardsR10.lis <- rncheckfirst(richardsR10.lis,
+                    existing = existing)
+                  if (rncheck(richardsR10.lis, existing = existing) ==
+                    TRUE)
+                    richardsR10.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 10),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR16.lis  --")
+                  richardsR16.lis <- rncheckfirst(richardsR16.lis,
+                    existing = existing)
+                  if (rncheck(richardsR16.lis, existing = existing) ==
+                    TRUE)
+                    richardsR16.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 16),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR10.lis, richardsR16.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "7."
+                  currentmodID2 = "3."
+                }
+                if (currentmodID3 == "7." & currentmodID2 ==
+                  "3.") {
+                  print("--ASSESSING MODEL: richardsR10.lis  --")
+                  richardsR10.lis <- rncheckfirst(richardsR10.lis,
+                    existing = existing)
+                  if (rncheck(richardsR10.lis, existing = existing) ==
+                    TRUE)
+                    richardsR10.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 10),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR5.lis  --")
+                  richardsR5.lis <- rncheckfirst(richardsR5.lis,
+                    existing = existing)
+                  if (rncheck(richardsR5.lis, existing = existing) ==
+                    TRUE)
+                    richardsR5.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 5),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR10.lis, richardsR5.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "7."
+                  currentmodID2 = "9."
+                }
+                if (currentmodID3 == "7." & currentmodID2 ==
+                  "9.") {
+                  print("--ASSESSING MODEL: richardsR16.lis  --")
+                  richardsR16.lis <- rncheckfirst(richardsR16.lis,
+                    existing = existing)
+                  if (rncheck(richardsR16.lis, existing = existing) ==
+                    TRUE)
+                    richardsR16.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 16),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR5.lis  --")
+                  richardsR5.lis <- rncheckfirst(richardsR5.lis,
+                    existing = existing)
+                  if (rncheck(richardsR5.lis, existing = existing) ==
+                    TRUE)
+                    richardsR5.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 5),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR16.lis, richardsR5.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "6."
+                  currentmodID2 = "13"
+                }
+                if (currentmodID3 == "6." & currentmodID2 ==
+                  "13") {
+                  print("--ASSESSING MODEL: richardsR10.lis  --")
+                  richardsR10.lis <- rncheckfirst(richardsR10.lis,
+                    existing = existing)
+                  if (rncheck(richardsR10.lis, existing = existing) ==
+                    TRUE)
+                    richardsR10.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 10),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR11.lis  --")
+                  richardsR11.lis <- rncheckfirst(richardsR11.lis,
+                    existing = existing)
+                  if (rncheck(richardsR11.lis, existing = existing) ==
+                    TRUE)
+                    richardsR11.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 11),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR10.lis, richardsR11.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "6."
+                  currentmodID2 = "3."
+                }
+                if (currentmodID3 == "6." & currentmodID2 ==
+                  "3.") {
+                  print("--ASSESSING MODEL: richardsR10.lis  --")
+                  richardsR10.lis <- rncheckfirst(richardsR10.lis,
+                    existing = existing)
+                  if (rncheck(richardsR10.lis, existing = existing) ==
+                    TRUE)
+                    richardsR10.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 10),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR5.lis  --")
+                  richardsR5.lis <- rncheckfirst(richardsR5.lis,
+                    existing = existing)
+                  if (rncheck(richardsR5.lis, existing = existing) ==
+                    TRUE)
+                    richardsR5.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 5),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR10.lis, richardsR5.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "6."
+                  currentmodID2 = "4."
+                }
+                if (currentmodID3 == "6." & currentmodID2 ==
+                  "4.") {
+                  print("--ASSESSING MODEL: richardsR11.lis  --")
+                  richardsR11.lis <- rncheckfirst(richardsR11.lis,
+                    existing = existing)
+                  if (rncheck(richardsR11.lis, existing = existing) ==
+                    TRUE)
+                    richardsR11.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 11),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR5.lis  --")
+                  richardsR5.lis <- rncheckfirst(richardsR5.lis,
+                    existing = existing)
+                  if (rncheck(richardsR5.lis, existing = existing) ==
+                    TRUE)
+                    richardsR5.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 5),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR11.lis, richardsR5.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "8."
+                  currentmodID2 = "15"
+                }
+                if (currentmodID3 == "8." & currentmodID2 ==
+                  "15") {
+                  print("--ASSESSING MODEL: richardsR16.lis  --")
+                  richardsR16.lis <- rncheckfirst(richardsR16.lis,
+                    existing = existing)
+                  if (rncheck(richardsR16.lis, existing = existing) ==
+                    TRUE)
+                    richardsR16.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 16),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR11.lis  --")
+                  richardsR11.lis <- rncheckfirst(richardsR11.lis,
+                    existing = existing)
+                  if (rncheck(richardsR11.lis, existing = existing) ==
+                    TRUE)
+                    richardsR11.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 11),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR16.lis, richardsR11.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "8."
+                  currentmodID2 = "9."
+                }
+                if (currentmodID3 == "8." & currentmodID2 ==
+                  "9.") {
+                  print("--ASSESSING MODEL: richardsR16.lis  --")
+                  richardsR16.lis <- rncheckfirst(richardsR16.lis,
+                    existing = existing)
+                  if (rncheck(richardsR16.lis, existing = existing) ==
+                    TRUE)
+                    richardsR16.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 16),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR5.lis  --")
+                  richardsR5.lis <- rncheckfirst(richardsR5.lis,
+                    existing = existing)
+                  if (rncheck(richardsR5.lis, existing = existing) ==
+                    TRUE)
+                    richardsR5.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 5),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR16.lis, richardsR5.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "8."
+                  currentmodID2 = "4."
+                }
+                if (currentmodID3 == "8." & currentmodID2 ==
+                  "4.") {
+                  print("--ASSESSING MODEL: richardsR11.lis  --")
+                  richardsR11.lis <- rncheckfirst(richardsR11.lis,
+                    existing = existing)
+                  if (rncheck(richardsR11.lis, existing = existing) ==
+                    TRUE)
+                    richardsR11.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 11),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR5.lis  --")
+                  richardsR5.lis <- rncheckfirst(richardsR5.lis,
+                    existing = existing)
+                  if (rncheck(richardsR5.lis, existing = existing) ==
+                    TRUE)
+                    richardsR5.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = M, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 5),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR11.lis, richardsR5.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+            }
+            if (cnt == 5) {
+                print("Step 5 of 6*********************************************************************")
+                currentmodID1 <- get("tempparam_select", envir = .GlobalEnv)
+                print("--ASSESSING MODEL: richardsR12.lis  --")
+                richardsR12.lis <- rncheckfirst(richardsR12.lis,
+                  existing = existing)
+                if (rncheck(richardsR12.lis, existing = existing) ==
+                  TRUE)
+                  richardsR12.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = M, RAsym = 1, Rk = 1,
+                      Ri = 1, RM = 1, modno = 12), data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                step5stat <- extraF(richardsR12.lis, currentmodel)
+                step5submod <- TRUE
+                currentmodel <- tstmod(richardsR12.lis, currentmodel)
+            }
+            cnt <- cnt + 1
+            print("4 param")
+            print(cnt)
+        } else {
+            if (cnt == 1) {
+                print("Step 1 of a maximum of 6*********************************************************************")
+                print("--ASSESSING MODEL: richardsR21.lis  --")
+                richardsR21.lis <- rncheckfirst(richardsR21.lis,
+                  existing = existing)
+                if (rncheck(richardsR21.lis, existing = existing) ==
+                  TRUE)
+                  richardsR21.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                      Rk = Rk, Ri = Ri, RM = RM, modno = 21),
+                      data = userdata)
+                  }, silent = TRUE)
+                currentmodel <- rnassign()
+                if (class(currentmodel)[1] != "numeric")
+                  step1submod <- TRUE
+            }
+            if (cnt == 2) {
+                print("Step 2 of a maximum of 6*********************************************************************")
+                print("--ASSESSING MODEL: richardsR22.lis  --")
+                richardsR22.lis <- rncheckfirst(richardsR22.lis,
+                  existing = existing)
+                if (rncheck(richardsR22.lis, existing = existing) ==
+                  TRUE)
+                  richardsR22.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                      Rk = Rk, Ri = Ri, RM = 1, modno = 22),
+                      data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                print("--ASSESSING MODEL: richardsR27.lis  --")
+                richardsR27.lis <- rncheckfirst(richardsR27.lis,
+                  existing = existing)
+                if (rncheck(richardsR27.lis, existing = existing) ==
+                  TRUE)
+                  richardsR27.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = 1, RAsym = 1, Rk = Rk,
+                      Ri = Ri, RM = RM, modno = 27), data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                print("--ASSESSING MODEL: richardsR26.lis  --")
+                richardsR26.lis <- rncheckfirst(richardsR26.lis,
+                  existing = existing)
+                if (rncheck(richardsR26.lis, existing = existing) ==
+                  TRUE)
+                  richardsR26.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                      Rk = 1, Ri = Ri, RM = RM, modno = 26),
+                      data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                print("--ASSESSING MODEL: richardsR28.lis  --")
+                richardsR28.lis <- rncheckfirst(richardsR28.lis,
+                  existing = existing)
+                if (rncheck(richardsR28.lis, existing = existing) ==
+                  TRUE)
+                  richardsR28.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                      Rk = Rk, Ri = 1, RM = RM, modno = 28),
+                      data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                submodel <- rankmod(richardsR22.lis, richardsR27.lis,
+                  richardsR26.lis, richardsR28.lis)
+                step2stat <- extraF(submodel, currentmodel)
+                currentmodel <- tstmod(submodel, currentmodel)
+            }
+            if (cnt == 3) {
+                print("Step 3 of a maximum of 6*********************************************************************")
+                currentmodID3 <- get("tempparam_select", envir = .GlobalEnv)
+                print(currentmodID3)
+                if (currentmodID3 == "NONE")
+                  currentmodID3 = "22"
+                if (currentmodID3 == "22") {
+                  print("--ASSESSING MODEL: richardsR34.lis  --")
+                  richardsR34.lis <- rncheckfirst(richardsR34.lis,
+                    existing = existing)
+                  if (rncheck(richardsR34.lis, existing = existing) ==
+                    TRUE)
+                    richardsR34.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = Ri, RM = 1, modno = 34),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR33.lis  --")
+                  richardsR33.lis <- rncheckfirst(richardsR33.lis,
+                    existing = existing)
+                  if (rncheck(richardsR33.lis, existing = existing) ==
+                    TRUE)
+                    richardsR33.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 33),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR35.lis  --")
+                  richardsR35.lis <- rncheckfirst(richardsR35.lis,
+                    existing = existing)
+                  if (rncheck(richardsR35.lis, existing = existing) ==
+                    TRUE)
+                    richardsR35.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 35),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR34.lis, richardsR33.lis,
+                    richardsR35.lis)
+                  step3stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE")
+                  currentmodID3 = "27"
+                if (currentmodID3 == "27") {
+                  print("--ASSESSING MODEL: richardsR34.lis  --")
+                  richardsR34.lis <- rncheckfirst(richardsR34.lis,
+                    existing = existing)
+                  if (rncheck(richardsR34.lis, existing = existing) ==
+                    TRUE)
+                    richardsR34.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = Ri, RM = 1, modno = 34),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR23.lis  --")
+                  richardsR23.lis <- rncheckfirst(richardsR23.lis,
+                    existing = existing)
+                  if (rncheck(richardsR23.lis, existing = existing) ==
+                    TRUE)
+                    richardsR23.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = RM, modno = 23),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR29.lis  --")
+                  richardsR29.lis <- rncheckfirst(richardsR29.lis,
+                    existing = existing)
+                  if (rncheck(richardsR29.lis, existing = existing) ==
+                    TRUE)
+                    richardsR29.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = RM, modno = 29),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR34.lis, richardsR23.lis,
+                    richardsR29.lis)
+                  step3stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE")
+                  currentmodID3 = "26"
+                if (currentmodID3 == "26") {
+                  print("--ASSESSING MODEL: richardsR33.lis  --")
+                  richardsR33.lis <- rncheckfirst(richardsR33.lis,
+                    existing = existing)
+                  if (rncheck(richardsR33.lis, existing = existing) ==
+                    TRUE)
+                    richardsR33.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 33),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR23.lis  --")
+                  richardsR23.lis <- rncheckfirst(richardsR23.lis,
+                    existing = existing)
+                  if (rncheck(richardsR23.lis, existing = existing) ==
+                    TRUE)
+                    richardsR23.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = RM, modno = 23),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR24.lis  --")
+                  richardsR24.lis <- rncheckfirst(richardsR24.lis,
+                    existing = existing)
+                  if (rncheck(richardsR24.lis, existing = existing) ==
+                    TRUE)
+                    richardsR24.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = RM, modno = 24),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR33.lis, richardsR23.lis,
+                    richardsR24.lis)
+                  step3stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE")
+                  currentmodID3 = "28"
+                if (currentmodID3 == "28") {
+                  print("--ASSESSING MODEL: richardsR35.lis  --")
+                  richardsR35.lis <- rncheckfirst(richardsR35.lis,
+                    existing = existing)
+                  if (rncheck(richardsR35.lis, existing = existing) ==
+                    TRUE)
+                    richardsR35.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 35),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR29.lis  --")
+                  richardsR29.lis <- rncheckfirst(richardsR29.lis,
+                    existing = existing)
+                  if (rncheck(richardsR29.lis, existing = existing) ==
+                    TRUE)
+                    richardsR29.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = RM, modno = 29),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR24.lis  --")
+                  richardsR24.lis <- rncheckfirst(richardsR24.lis,
+                    existing = existing)
+                  if (rncheck(richardsR24.lis, existing = existing) ==
+                    TRUE)
+                    richardsR24.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = RM, modno = 24),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR35.lis, richardsR29.lis,
+                    richardsR24.lis)
+                  step3stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+            }
+            if (cnt == 4) {
+                print("Step 4 of a maximum of 6*********************************************************************")
+                currentmodID2 <- get("tempparam_select", envir = .GlobalEnv)
+                print(currentmodID2)
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "22"
+                  currentmodID2 = "34"
+                }
+                if (currentmodID3 == "22" & currentmodID2 ==
+                  "34") {
+                  print("--ASSESSING MODEL: richardsR30.lis  --")
+                  richardsR30.lis <- rncheckfirst(richardsR30.lis,
+                    existing = existing)
+                  if (rncheck(richardsR30.lis, existing = existing) ==
+                    TRUE)
+                    richardsR30.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 30),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR36.lis  --")
+                  richardsR36.lis <- rncheckfirst(richardsR36.lis,
+                    existing = existing)
+                  if (rncheck(richardsR36.lis, existing = existing) ==
+                    TRUE)
+                    richardsR36.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 36),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR30.lis, richardsR36.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "22"
+                  currentmodID2 = "33"
+                }
+                if (currentmodID3 == "22" & currentmodID2 ==
+                  "33") {
+                  print("--ASSESSING MODEL: richardsR33.lis  --")
+                  richardsR30.lis <- rncheckfirst(richardsR30.lis,
+                    existing = existing)
+                  if (rncheck(richardsR30.lis, existing = existing) ==
+                    TRUE)
+                    richardsR30.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 30),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR31.lis  --")
+                  richardsR31.lis <- rncheckfirst(richardsR31.lis,
+                    existing = existing)
+                  if (rncheck(richardsR31.lis, existing = existing) ==
+                    TRUE)
+                    richardsR31.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 31),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR30.lis, richardsR31.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "22"
+                  currentmodID2 = "35"
+                }
+                if (currentmodID3 == "22" & currentmodID2 ==
+                  "35") {
+                  print("--ASSESSING MODEL: richardsR36.lis  --")
+                  richardsR36.lis <- rncheckfirst(richardsR36.lis,
+                    existing = existing)
+                  if (rncheck(richardsR36.lis, existing = existing) ==
+                    TRUE)
+                    richardsR36.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 36),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR31.lis  --")
+                  richardsR31.lis <- rncheckfirst(richardsR31.lis,
+                    existing = existing)
+                  if (rncheck(richardsR31.lis, existing = existing) ==
+                    TRUE)
+                    richardsR31.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 31),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR36.lis, richardsR31.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "27"
+                  currentmodID2 = "34"
+                }
+                if (currentmodID3 == "27" & currentmodID2 ==
+                  "34") {
+                  print("--ASSESSING MODEL: richardsR30.lis  --")
+                  richardsR30.lis <- rncheckfirst(richardsR30.lis,
+                    existing = existing)
+                  if (rncheck(richardsR30.lis, existing = existing) ==
+                    TRUE)
+                    richardsR30.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 30),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR36.lis  --")
+                  richardsR36.lis <- rncheckfirst(richardsR36.lis,
+                    existing = existing)
+                  if (rncheck(richardsR36.lis, existing = existing) ==
+                    TRUE)
+                    richardsR36.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 36),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR30.lis, richardsR36.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "27"
+                  currentmodID2 = "33"
+                }
+                if (currentmodID3 == "27" & currentmodID2 ==
+                  "23") {
+                  print("--ASSESSING MODEL: richardsR30.lis  --")
+                  richardsR30.lis <- rncheckfirst(richardsR30.lis,
+                    existing = existing)
+                  if (rncheck(richardsR30.lis, existing = existing) ==
+                    TRUE)
+                    richardsR30.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 30),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR25.lis  --")
+                  richardsR25.lis <- rncheckfirst(richardsR25.lis,
+                    existing = existing)
+                  if (rncheck(richardsR25.lis, existing = existing) ==
+                    TRUE)
+                    richardsR25.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 25),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR30.lis, richardsR25.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "27"
+                  currentmodID2 = "29"
+                }
+                if (currentmodID3 == "27" & currentmodID2 ==
+                  "29") {
+                  print("--ASSESSING MODEL: richardsR36.lis  --")
+                  richardsR36.lis <- rncheckfirst(richardsR36.lis,
+                    existing = existing)
+                  if (rncheck(richardsR36.lis, existing = existing) ==
+                    TRUE)
+                    richardsR36.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 36),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR25.lis  --")
+                  richardsR25.lis <- rncheckfirst(richardsR25.lis,
+                    existing = existing)
+                  if (rncheck(richardsR25.lis, existing = existing) ==
+                    TRUE)
+                    richardsR25.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 25),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR36.lis, richardsR25.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "26"
+                  currentmodID2 = "33"
+                }
+                if (currentmodID3 == "26" & currentmodID2 ==
+                  "33") {
+                  print("--ASSESSING MODEL: richardsR33.lis  --")
+                  richardsR30.lis <- rncheckfirst(richardsR30.lis,
+                    existing = existing)
+                  if (rncheck(richardsR30.lis, existing = existing) ==
+                    TRUE)
+                    richardsR30.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 30),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR31.lis  --")
+                  richardsR31.lis <- rncheckfirst(richardsR31.lis,
+                    existing = existing)
+                  if (rncheck(richardsR31.lis, existing = existing) ==
+                    TRUE)
+                    richardsR31.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 31),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR30.lis, richardsR31.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "6."
+                  currentmodID2 = "3."
+                }
+                if (currentmodID3 == "26" & currentmodID2 ==
+                  "3.") {
+                  print("--ASSESSING MODEL: richardsR30.lis  --")
+                  richardsR30.lis <- rncheckfirst(richardsR30.lis,
+                    existing = existing)
+                  if (rncheck(richardsR30.lis, existing = existing) ==
+                    TRUE)
+                    richardsR30.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = Ri, RM = 1, modno = 30),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR25.lis  --")
+                  richardsR25.lis <- rncheckfirst(richardsR25.lis,
+                    existing = existing)
+                  if (rncheck(richardsR25.lis, existing = existing) ==
+                    TRUE)
+                    richardsR25.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 25),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR30.lis, richardsR25.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "26"
+                  currentmodID2 = "24"
+                }
+                if (currentmodID3 == "26" & currentmodID2 ==
+                  "24") {
+                  print("--ASSESSING MODEL: richardsR31.lis  --")
+                  richardsR31.lis <- rncheckfirst(richardsR31.lis,
+                    existing = existing)
+                  if (rncheck(richardsR31.lis, existing = existing) ==
+                    TRUE)
+                    richardsR31.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 31),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR25.lis  --")
+                  richardsR25.lis <- rncheckfirst(richardsR25.lis,
+                    existing = existing)
+                  if (rncheck(richardsR25.lis, existing = existing) ==
+                    TRUE)
+                    richardsR25.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 25),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR31.lis, richardsR25.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "28"
+                  currentmodID2 = "35"
+                }
+                if (currentmodID3 == "28" & currentmodID2 ==
+                  "35") {
+                  print("--ASSESSING MODEL: richardsR36.lis  --")
+                  richardsR36.lis <- rncheckfirst(richardsR36.lis,
+                    existing = existing)
+                  if (rncheck(richardsR36.lis, existing = existing) ==
+                    TRUE)
+                    richardsR36.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 36),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR31.lis  --")
+                  richardsR31.lis <- rncheckfirst(richardsR31.lis,
+                    existing = existing)
+                  if (rncheck(richardsR31.lis, existing = existing) ==
+                    TRUE)
+                    richardsR31.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 31),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR36.lis, richardsR31.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "28"
+                  currentmodID2 = "29"
+                }
+                if (currentmodID3 == "28" & currentmodID2 ==
+                  "29") {
+                  print("--ASSESSING MODEL: richardsR36.lis  --")
+                  richardsR36.lis <- rncheckfirst(richardsR36.lis,
+                    existing = existing)
+                  if (rncheck(richardsR36.lis, existing = existing) ==
+                    TRUE)
+                    richardsR36.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = Rk, Ri = 1, RM = 1, modno = 36),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR25.lis  --")
+                  richardsR25.lis <- rncheckfirst(richardsR25.lis,
+                    existing = existing)
+                  if (rncheck(richardsR25.lis, existing = existing) ==
+                    TRUE)
+                    richardsR25.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 25),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR36.lis, richardsR25.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+                if (currentmodID3 == "NONE" & currentmodID2 ==
+                  "NONE") {
+                  currentmodID3 = "28"
+                  currentmodID2 = "24"
+                }
+                if (currentmodID3 == "28" & currentmodID2 ==
+                  "24") {
+                  print("--ASSESSING MODEL: richardsR31.lis  --")
+                  richardsR31.lis <- rncheckfirst(richardsR31.lis,
+                    existing = existing)
+                  if (rncheck(richardsR31.lis, existing = existing) ==
+                    TRUE)
+                    richardsR31.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = RAsym,
+                        Rk = 1, Ri = 1, RM = 1, modno = 31),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  print("--ASSESSING MODEL: richardsR25.lis  --")
+                  richardsR25.lis <- rncheckfirst(richardsR25.lis,
+                    existing = existing)
+                  if (rncheck(richardsR25.lis, existing = existing) ==
+                    TRUE)
+                    richardsR25.lis <- try({
+                      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                        K = K, Infl = Infl, M = 1, RAsym = 1,
+                        Rk = 1, Ri = 1, RM = RM, modno = 25),
+                        data = userdata)
+                    }, silent = TRUE)
+                  dump <- rnassign()
+                  submodel <- rankmod(richardsR31.lis, richardsR25.lis)
+                  step4stat <- extraF(submodel, currentmodel)
+                  currentmodel <- tstmod(submodel, currentmodel)
+                }
+            }
+            if (cnt == 5) {
+                print("Step 5 of 6*********************************************************************")
+                currentmodID1 <- get("tempparam_select", envir = .GlobalEnv)
+                print(currentmodID1)
+                print("--ASSESSING MODEL: richardsR32.lis  --")
+                richardsR32.lis <- rncheckfirst(richardsR32.lis,
+                  existing = existing)
+                if (rncheck(richardsR32.lis, existing = existing) ==
+                  TRUE)
+                  richardsR32.lis <- try({
+                    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
+                      K = K, Infl = Infl, M = 1, RAsym = 1, Rk = 1,
+                      Ri = 1, RM = 1, modno = 32), data = userdata)
+                  }, silent = TRUE)
+                dump <- rnassign()
+                step5stat <- extraF(richardsR32.lis, currentmodel)
+                step5submod <- TRUE
+                currentmodel <- tstmod(richardsR32.lis, currentmodel)
+            }
+            cnt <- cnt + 1
+        }
+    }
+    if (modelsig > 0.05) {
+        mod1 <- "1."
+        mod4 <- "12"
+    } else {
+        mod1 <- "21"
+        mod4 <- "32"
+    }
+    if (step5submod == FALSE) {
+        step5submod <- NA
+        step5stat <- NA
+        mod4 <- NA
+        mod5 <- NA
+        step6stat <- NA
+    } else {
+        print("Step 6 of 6*********************************************************************")
+        if (class (mostreducedmod)[1] != "numeric"){
+        mod5 <- mostreducednm
+        step6stat <- extraF(mostreducedmod, currentmodel)
+        currentmodel <- tstmod(mostreducedmod, currentmodel)
+        } else {
+        step6stat <- NA
+        mod5 <- NA
+        }
+    }
+    options(warn = -1)
+    currentmodID3 <- as.numeric(currentmodID3)
+    currentmodID2 <- as.numeric(currentmodID2)
+    currentmodID1 <- as.numeric(currentmodID1)
+    options(warn = 0)
+    if(mod1 == "1.") mod1 <- "1"
+    modnames <- c(paste("richardsR", mod1, ".lis", sep = ""),
+        paste("richardsR", currentmodID3, ".lis", sep = ""),
+        paste("richardsR", currentmodID2, ".lis", sep = ""),
+        paste("richardsR", currentmodID1, ".lis", sep = ""),
+        paste("richardsR", mod4, ".lis", sep = ""), paste("richardsR",
+            mod5, ".lis", sep = ""))
+    modnames[modnames == "richardsRNA.lis"] <- ""
+    modnames[modnames == "richardsRNONE.lis"] <- ""
+    stepwisetable <- data.frame(`       Best Submodel at Step` = modnames)
+    testof <- rep("", 6)
+    xf <- rep("", 6)
+    dfn <- rep("", 6)
+    dfd <- rep("", 6)
+    pval <- rep("", 6)
+    RSSgen <- rep("", 6)
+    RSSsub <- rep("", 6)
+    for (i in 1:6) {
+        if (i > 1) {
+            if (modnames[i] == "" & modnames[i - 1] == "") {
+                testof[i] <- "No models converged at this step"
+            } else {
+                testof[i] <- paste("|      ", modnames[i], " vs ",
+                  modnames[i - 1], "      |", sep = "")
+            }
+            currstat <- eval(parse(text = sprintf("%s", (paste("step",
+                i, "stat", sep = "")))))
+            xf[i] <- round(as.numeric(currstat[1]), 4)
+            dfn[i] <- as.numeric(currstat[2])
+            dfd[i] <- as.numeric(currstat[3])
+            pval[i] <- round(as.numeric(currstat[4]), 8)
+            RSSgen[i] <- round(as.numeric(currstat[5]), 1)
+            RSSsub[i] <- as.numeric(currstat[6])
+        } else {
+            testof[i] <- "|     Reduced model    More complex model      |"
+        }
+    }
+    modnames1 <- modnames
+    for (i in 2:6) {
+        if (is.na(pval[i]) == FALSE) {
+            if (pval[i] < 0.05)
+                modnames1[i] <- modnames1[i - 1]
+        } else {
+            modnames1[i] <- modnames1[i]
+        }
+    }
+    for (i in 2:6) {
+        if (modnames[i] == "" & modnames[i - 1] == "") {
+            testof[i] <- "No models converged at this step"
+        } else {
+            if (modnames[i - 1] != modnames1[i - 1])
+                testof[i] <- paste("|      ", modnames[i], " vs ",
+                  modnames1[i - 1], "      |", sep = "")
+        }
+    }
+    testof <- unlist(testof)
+    xf <- data.frame(sprintf("%.4f", as.numeric(unlist(xf))))
+    dfn <- data.frame(as.numeric(unlist(dfn)))
+    dfd <- data.frame(as.numeric(unlist(dfd)))
+    pval <- data.frame(sprintf("%.8f", as.numeric(unlist(pval))))
+    RSSgen <- data.frame(sprintf("%.1f", as.numeric(unlist(RSSgen))))
+    RSSsub <- data.frame(sprintf("%.1f", as.numeric(unlist(RSSsub))))
+    stepwisetable <- data.frame(`       Best Submodel at Step` = modnames1,
+        Test = testof, `F-stat` = xf, df_n = dfn, df_d = dfd,
+        P = pval, RSS_sub = RSSsub, RSS_gen = RSSgen)
+    names(stepwisetable) <- c("       Best Submodel at Step",
+        "Test                 ", "F-stat", "df_n", "df_d", "P",
+        "RSS_sub", "RSS_gen")
+    row.names(stepwisetable) <- c("Step 1", "Step 2", "Step 3",
+        "Step 4", "Step 5", "Step 6")
+    stepwisetable[is.na(stepwisetable)] <- ""
+    print("###########  Minimal applicable model arrived at by stepwise reduction is saved as pn_bestmodel.lis  ################")
+    assign("pn_bestmodel.lis", currentmodel, envir = globalenv())
+    return(stepwisetable)
+    ##value<< A \code{\link{data.frame}} containing statistics produced by \code{\link{extraF}}
+    ## evaluations at each step, detailing the name of the general and best reduced model at each
+    ## step. The overall best model evaluated by the end of the function is saved globally as
+    ## \eqn{pn_bestmodel.lis}
+    ## The naming convention for models is a concatenation of 'richardsR', the modno and '.lis'
+    ## (see \code{\link{SSposnegRichards}}).
+    ##seealso<< \code{\link{pn_mod_compare}}
+    ## \code{\link{extraF}}
+    ## \code{\link{SSposnegRichards}}
+    ## \code{\link{nlsList}}
+    ##note<< If object \eqn{pnmodelparams} does not exist, \code{\link{modpar}}
+    ## will be called automatically prior to model selection. During selection, text is output
+    ## to the screen to inform the user of the progress of model selection
+    ## (which model is being fitted)
+}
+, ex = function(){
+#run model selection for posneg_data object (only first 3 group levels for example's sake)
+data(posneg_data)
+subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 40)
+modseltable <- pn_modselect_step(subdata$age, subdata$mass,
+    subdata$id, existing = FALSE)
+
+#fit nlsList model initially and then run model selection
+#for posneg_data object when at least one model is already fit
+#note forcemod is set to 3 so that models 21-36 are evaluated
+#(only first 4 group levels for example's sake)
+subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 40)
+richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
+   Infl = Infl, M = 1, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = 1 , modno = 22)
+                        ,data = subdata)
+modseltable <- pn_modselect_step(subdata$age, subdata$mass,
+    subdata$id, forcemod = 3, existing = TRUE)
+
+#run model selection ranked by residual standard error*sample size
+#(only first 4 group levels for example's sake)
+modseltable <- pn_modselect_step(subdata$age, subdata$mass,
+    subdata$id, penaliz='1*(n)', existing = TRUE)  
+}
+)
