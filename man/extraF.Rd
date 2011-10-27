@@ -45,15 +45,16 @@ Springer-Verlag, New York.}
 \code{\link{pn_mod_compare}}}
 \examples{
    #compare two nested nlsList models (4 vs 8 parameter models)
+\donttest{
    data(posneg_data)
    modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
    # (only first 4 group levels in data used for example's sake)
    subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 53)
-   richardsR1.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-     Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1)
+   richardsR2.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
+     Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,modno = 2)
                         , data = subdata)
    richardsR12.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-     Infl = Infl, M = M, RAsym = 1, Rk = 1, Ri = 1, RM = 1, modno = 12)
+     Infl = Infl, M = M, modno = 12)
                         , data = subdata)
-   extraF(richardsR12.lis, richardsR1.lis)
+   extraF(richardsR12.lis, richardsR1.lis)}
 }

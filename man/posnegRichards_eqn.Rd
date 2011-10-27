@@ -5,14 +5,14 @@
 depending on user-specified parameters and model choice}
 \usage{
 posnegRichards_eqn(x,
-Asym,
-K,
-Infl,
-M,
-RAsym,
-Rk,
-Ri,
-RM,
+Asym = NA,
+K = NA,
+Infl = NA,
+M = NA,
+RAsym = NA,
+Rk = NA,
+Ri = NA,
+RM = NA,
 modno)
 }
 \arguments{
@@ -32,6 +32,10 @@ number of the equation to be fitted}
 in that they have a positive (increasing) trajectory followed by a negative (decreasing) trajectory.
 
 These equations have also been described as double-Richards curves, or positive-negative Richards curves.
+From version 1.2 onwards this function can fit curves that exhibit negative followed by positive
+trajectories or double positive or double negative trajectories. This function can now also fit two 
+component models, where the first curve is used up to the age of intersection and the second curve is used
+afterwards, thus the curves are not joined as in standard models (see \code{\link{SSposnegRichards}} for details.
 
 The 36 possible equations are all based on the subtraction of one Richards curve from another, producing:
 \eqn{y = A / ([1+ m exp(-k (t-i))]1/m) - A' / ([1+ m' exp(-k' (t-i' ))]1/m' )}, where A=Asym, k=K, i=Infl, m=M,
@@ -52,19 +56,22 @@ extract appropriate values from the object \eqn{pnmodelparams} for the fixed par
 
 
 \seealso{\code{\link{SSposnegRichards}}
-\code{\link{modpar}}}
+\code{\link{modpar}}    }
 \examples{
-    require(graphics)
-    # calculate y from an 8-parameter model
-    data(posneg_data)
-    modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
-    y <- posnegRichards_eqn(10, 1000, 0.5, 25, 1, 100, 0.5, 125, 1, modno = 1)
-    
-    # calculate y from a 4-parameter positive only model, note that all negative parameters specified here are ignored
-    # and replaced with value from pnmodelparams
-    y <- posnegRichards_eqn(10 ,1000 ,0.5 ,25 ,1 ,100 ,0.5 ,125 ,1 ,modno = 12)
-    
-    # plot a logistic curve (M=1), note that all negative parameters specified here are ignored
-    plot(1:200 ,posnegRichards_eqn(1:200 ,1000 ,0.5 ,25 ,1 ,100 ,0.5 ,125 ,1 ,modno = 12),xlim=c(1, 200),
-    xlab = "x", ylab = "y",pch = 1, cex = 0.7)
+require(graphics)
+# calculate y from an 8-parameter model
+   	 data(posneg_data)
+   	 modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
+   	 y <- posnegRichards_eqn(10, 1000, 0.5, 25, 1, 100, 0.5, 125, 
+   	 1, modno = 1)
+
+# calculate y from a 4-parameter positive only model, note that second curve parameters are unneeded
+# and replaced with value from pnmodelparams
+   	 y <- posnegRichards_eqn(10, 1000, 0.5, 25, 1, 
+   	 1, modno = 12)
+   	 
+# plot a logistic curve (M=1),  note that second curve parameters are unneeded 	     
+   	 plot(1:200, posnegRichards_eqn(1:200, 1000, 0.5, 25, 1, 
+   	  modno = 12), xlim = c(1, 200), xlab = "x", 
+   		 ylab = "y", pch = 1, cex = 0.7)
 }

@@ -59,8 +59,8 @@ plot(mass ~ age, data = posneg_data, subset = id == "1",
      xlab = "Chick age (day)", las = 1,
      ylab = "Chick mass (g)",
      main = "posneg_data data and fitted curve (Chick #1 only)")
-fm1 <- nls(mass ~ SSposnegRichards(age,Asym=Asym,K=K,Infl=Infl,M=1,RAsym=RAsym,
-           Rk=Rk,Ri=Ri,RM=1,modno=22),
+fm1 <- nls(mass ~ SSposnegRichards(age,Asym=Asym,K=K,Infl=Infl, RAsym=RAsym,
+           Rk=Rk,Ri=Ri,modno=22),
            data = posneg_data, subset = id == "1")
 age <- seq(0, 166, length.out = 101)
 lines(age, predict(fm1, list(age = age)))

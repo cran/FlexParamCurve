@@ -1,30 +1,34 @@
 modpar <-
-structure(function # Estimate Values to be Used for Fixed FlexParamCurve Parameters
-                    (x,
-                     ### a numeric vector of primary predictor variable
+structure(function
+		(x,
                      y,
-                     ### a numeric vector of response variable
                      first_y = NA,
-                     ###  the value of y at minimum x  when it is required to be constrained
+                     x_at_first_y = NA,
                      last_y = NA,
-                     ###  the value of y at maximum x when it is required to be constrained
                      x_at_last_y = NA,
-                     ###  the final value of x - this is option is currently disabled
-                     force8par = FALSE
-                     ### logical specifying whether parameters of the negative Richards
-                     ### curve should be set to defaults if they cannot be estimated
+                     twocomponent_age = NA,
+                     verbose = FALSE,
+                     force8par = FALSE,
+                     force4par = FALSE
                      ) {
-    ##description<< This function creates the object \eqn{pnmodelparams}
-    ## which holds estimates of values for all 8 FlexParamCurve
-    ## parameters used for fitting and solving positive-negative Richards curves with
-    ## \code{\link{SSposnegRichards}} and \code{\link{posnegRichards_eqn}},
-    ## respectively. 
     options(warn = -1)
-    skel <- rep(list(1), 11)
-    initval <- c(rep(NA, 11))
+    if(!is.na(twocomponent_age) & force4par == TRUE) 
+    	stop("Cannot force a two component Richards model to have a single component.\nSet force4par to FALSE")
+    detl <- TRUE
+    if(verbose == TRUE) detl <- FALSE
+    skel <- rep(list(1), 15)
+    initval <- c(rep(NA, 15))
     initval <- relist(initval, skel)
     names(initval) <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
-        "Ri", "RM", "first_y", "last_y", "x_at_last_y")
+        "Ri", "RM", "first_y", "x_at_first_y", "last_y", "x_at_last_y",
+        "twocomponent_age","verbose","force4par")
+    initval$first_y <- first_y
+    initval$x_at_first_y <- x_at_first_y
+    initval$last_y <- last_y
+    initval$x_at_last_y <- x_at_last_y
+    initval$twocomponent_age <- twocomponent_age
+    initval$verbose <- verbose
+    initval$force4par <- force4par
     assign("pnmodelparams", initval, envir = globalenv())
     skel1 <- rep(list(1), 16)
     initval1 <- c(rep(NA, 16))
@@ -36,97 +40,147 @@ structure(function # Estimate Values to be Used for Fixed FlexParamCurve Paramet
     xy <- data.frame(x, y)
     assign("pnnlsxy", xy, envir = globalenv())
     xy <- na.omit(xy)
+    evlfit<-function(val1,val2){
+ 	richards <- function(x, Asym, K, Infl, M) Asym/Re(as.complex(1 +
+    	    M * exp(-K * (x - Infl)))^(1/M))
+	 SSposnegRichardsF <- function(x, Asym, K, Infl, M, RAsym,
+  	      Rk, Ri, RM) (Asym/Re(as.complex(1 + M * exp(-K * (x -
+  	      Infl)))^(1/M))) + (RAsym/Re(as.complex(1 + RM * exp(-Rk *
+  	      (x - Ri)))^(1/RM)))
+	if(is.na(val1[5])){
+		evl1<- sum((y-richards(x,as.numeric(val1[1]),as.numeric(val1[2]),
+               	 as.numeric(val1[3]),as.numeric(val1[4])))^2)
+		evl2<- sum((y-richards(x,as.numeric(val2[1]),as.numeric(val2[2]),
+               	 as.numeric(val2[3]),as.numeric(val2[4])))^2)
+
+	}else{
+		evl1<- sum((y-SSposnegRichardsF(x,as.numeric(val1[1]),as.numeric(val1[2]),
+               	 as.numeric(val1[3]),as.numeric(val1[4]),
+		as.numeric(val1[5]),as.numeric(val1[6]),
+		as.numeric(val1[6]),as.numeric(val1[8])))^2)
+		evl2<- sum((y-SSposnegRichardsF(x,as.numeric(val2[1]),as.numeric(val2[2]),
+               	 as.numeric(val2[3]),as.numeric(val2[4]),
+		as.numeric(val2[5]),as.numeric(val2[6]),
+		as.numeric(val2[6]),as.numeric(val2[8])))^2)
+	}
+	if(evl1<=evl2) {
+	valfin<-val1
+	}else{
+	valfin<-val2
+	}
+	return(valfin)
+	}
     value <- NA
+    succ <- FALSE
+    if(force4par == TRUE & is.na(twocomponent_age)) {
+      try(value <- getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+    	             K = K, Infl = Infl, M = M, modno = 19), data = xy), silent = detl)
+            savvalue<-value
+            value<-NA
+    print("try 4 parameter curve fit in nls")
+    try({value <- coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
+                    K = K, Infl = Infl, M = M, modno = 19), data = xy))
+         }, silent = detl)
+         if(is.na(value[1]) == FALSE) print("4 parameter nls fit successful")
+         if(is.na(value[1]) == TRUE) {
+          print("4 parameter nls fit failed, use getInitial to retrieve 4 parameters")
+         try(value <- getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+	             K = K, Infl = Infl, M = M, modno = 19), data = xy), silent = detl)
+            if(is.na(value[1]) == TRUE) {
+            stop("estimates not available for data provided. Please check data or provide estimates manually, see ?modpar")
+         					} else {
+         					print("4 parameter getInitial successful")
+         					}
+         }
+    if(!is.na(value[1]) & !is.na(savvalue[1])) value<-evlfit(savvalue,value)
+    }else{
+    try(value <- getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+                K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
+            Ri = Ri, RM = RM, modno = 18), data = xy), silent = detl)
+            tst<-get("pnmodelparamsbounds", envir = .GlobalEnv)
+     if (is.na(value[1]) == TRUE){
+        try(value <- getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+         	             K = K, Infl = Infl, M = M, modno = 19), data = xy), silent = detl)
+            bndsvals<-get("pnmodelparams", envir = .GlobalEnv)
+            bndsvals[5:8]<-bndsvals[1:4]
+            assign("pnmodelparamsbounds",bndsvals, envir = .GlobalEnv)
+            			}
+         savvalue<-value
+         value<-NA
+    if(force4par == TRUE & !is.na(twocomponent_age)) print("Cannot force a two component model to have 4 parameters")
     print("try 8 parameter curve fit in nls")
     try(value <- coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
         K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,
-        RM = RM, modno = 18), data = xy)), silent = TRUE)
+        RM = RM, modno = 18), data = xy)), silent = detl)
     if (is.na(value[1]) == TRUE) {
         print("8 parameter nls fit failed, use getInitial to retrieve 8 parameters")
         try(value <- getInitial(y ~ SSposnegRichards(x, Asym = Asym,
             K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
-            Ri = Ri, RM = RM, modno = 18), data = xy), silent = TRUE)
+            Ri = Ri, RM = RM, modno = 18), data = xy), silent = detl)
+             if (is.na(value[1]) == FALSE) {
+             		succ <- TRUE
+             		print("8 parameter getInitial successful")
+
+             		}
     } else {
         print("8 parameter nls fit successful")
+        succ <- TRUE
     }
-    if (is.na(value[1]) == TRUE) {
+    if(!is.na(value[1]) & !is.na(savvalue[1])) value<-evlfit(savvalue,value)
+    if (is.na(value[1]) == TRUE & is.na(twocomponent_age)) {
         print("getInitial failed, use 4 parameter nls fit - no estimates available for recession")
         print("if force8par==TRUE recession parameters estimated as RAsym=Asym*0.05, Rk=K, Ri=Infl, RM=M")
         try({
             value <- coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
-                K = K, Infl = Infl, M = M, RAsym = 1, Rk = 1,
-                Ri = 1, RM = 1, modno = 19), data = xy))
+                K = K, Infl = Infl, M = M, modno = 19), data = xy))
             if (force8par == TRUE) {
                 value <- c(value, value[1] * 0.05, value[2],
                   value[3], value[4])
                 names(value) <- c("Asym", "K", "Infl", "M", "RAsym",
                   "Rk", "Ri", "RM")
             }
-        }, silent = FALSE)
-        if (class(value) == "try-error")
+        }, silent = detl)
+        if(is.na(value[1]) == TRUE) {
+          print("4 parameter nls fit failed, use getInitial to retrieve 4 parameters")
+          try({
+ 	    value <- getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+	             K = K, Infl = Infl, M = M, modno = 19), data = xy)
+	    if (force8par == TRUE) {
+	        value <- c(value, value[1] * 0.05, value[2],
+	          value[3], value[4])
+	        names(value) <- c("Asym", "K", "Infl", "M", "RAsym",
+	        "Rk", "Ri", "RM")
+	     }
+          }, silent = detl)
+          if(is.na(value[1]) == TRUE) print("4 parameter getInitial failed")
+        } else {
+        print("4 parameter nls successful")
+        }
+        if(is.na(value[1]) == TRUE)
             stop("estimates not available for data provided. Please check data or provide estimates manually, see ?modpar")
     } else {
-        print("8 parameter getInitial successful")
+         if (succ != TRUE)
+                  stop("estimates not available for data provided. Please check data or provide estimates manually, see ?modpar")
+    }
     }
     if (length(value) == 4) {
         value <- c(value, rep(NA, 4))
         names(value) <- c(names(value[1:4]), "RAsym", "Rk", "Ri",
             "RM")
     }
-    optvals <- c(first_y, last_y, x_at_last_y)
-    names(optvals) <- c("first_y", "last_y", "x_at_last_y")
+    optvals <- c(first_y, x_at_first_y, last_y, x_at_last_y, twocomponent_age, verbose, force4par)
+    names(optvals) <- c("first_y", "x_at_first_y", "last_y", "x_at_last_y", "twocomponent_age", "verbose", "force4par")
     value <- c(unlist(value), optvals)
-    skel <- rep(list(1), 11)
+    skel <- rep(list(1), 15)
     value1 <- relist(value, skel)
     names(value1) <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
-        "Ri", "RM", "first_y", "last_y", "x_at_last_y")
+        "Ri", "RM", "first_y", "x_at_first_y", "last_y", "x_at_last_y",
+        "twocomponent_age", "verbose", "force4par")
+    lodpar <- get("pnmodelparams", envir = .GlobalEnv)
+     value1$twocomponent_age <- lodpar$twocomponent_age
+    value1$verbose <- initval$verbose
+    value1$force4par <- initval$force4par
     assign("pnmodelparams", value1, envir = globalenv())
-    ##details<< This function creates the object \eqn{pnmodelparams}
-    ## which holds estimates of values for all 8 FlexParamCurve
-    ## parameters used for fitting and solving positive-negative Richards curves with
-    ## \code{\link{SSposnegRichards}} and \code{\link{posnegRichards_eqn}},
-    ## respectively. Running this function concurrently creates the object
-    ## \eqn{pnmodelparamsbounds} which holds the maximum and minimum values
-    ## for parameters to be used by \code{\link{optim}} and \code{\link{nls}}
-    ## during parameter estimation. For definitions of parameters see either
-    ## \code{\link{SSposnegRichards}} or \code{\link{posnegRichards_eqn}}. These
-    ## objects are updated globally and
-    ## do not need to be assigned by the user: the output of a return value simply
-    ## offers a way to save values elsewhere for posterity.
-    ##
-    ## Estimates are produced by fitting positive-negative Richards curves in
-    ## \code{\link{nls}} using
-    ## \code{\link{SSposnegRichards}} for the full 8 parameter model (R1).
-    ## If this fails, the function \code{\link{getInitial}} is called to
-    ## attempt to produce initial estimates using the same 8 parameter model.
-    ## If this also fails, estimates are attempted in the same way using the
-    ## 4 parameter (positive only) model (R12). In this case, only the positive
-    ## parameters are returned (NAs are substituted for negative parameters)
-    ## unless argument force8mod=TRUE, in which case negative parameters are
-    ## defaulted to: RAsym = 0.05*Asym, Rk = K, Ri = Infl, RM = M.
-    ##
-    ## Parameter bounds estimated here for use in \code{\link{optim}} and \code{\link{nls}}
-    ## fits within \code{\link{SSposnegRichards}} are
-    ## applicable to a wide range of curves, although user may
-    ## change these manually in \code{\link{list}} object \eqn{pnmodelparamsbounds}
-    ## Bounds are estimated by \code{\link{modpar}} by adding or subtracting  multiples
-    ## of fixed parameter values to estimated mean parameter values:
-    ## -Asym*0.5 and +Asym*2.5,
-    ## -K*0.5 and +K*0.5,
-    ## -Infl*2.5 and +Infl*10
-    ## -M*2 and +M*2
-    ## -RAsym*0.5 and +RAsym*2.5,
-    ## -Rk*0.5 and +Rk*0.5,
-    ## -Ri*2.5 and +Ri*5
-    ## -RM*2 and +RM*2.
-    ##
-    ## Use force8mod=TRUE if initial call to \code{\link{modpar}} produces estimates for
-    ## only 4 parameters and yet an 8 parameter model is desired for \code{\link{SSposnegRichards}}
-    ## or \code{\link{posnegRichards_eqn}}.
-    ##
-    ## When specified, first_y and last_y are saved in \eqn{pnmodelparams} to instruct
-    ## \code{\link{SSposnegRichards}} to add this as the first or last value of the response, respectively,
-    ## during estimation.
     Amax = pnmodelparams$Asym + (abs(pnmodelparams$Asym) * 2.5)
     Amin = pnmodelparams$Asym - (abs(pnmodelparams$Asym) * 0.5)
     Kmax = pnmodelparams$K + (abs(pnmodelparams$K) * 0.5)
@@ -165,20 +219,15 @@ structure(function # Estimate Values to be Used for Fixed FlexParamCurve Paramet
     assign("pnmodelparamsbounds", value3, envir = globalenv())
     options(warn = 0)
     return(value1)
-    ##value<< a \code{\link{list}} of estimated fixed values for all
-    ## above arguments
-}
+    }
 , ex = function(){
-    # estimate fixed parameters use data object posneg_data
         data(posneg_data)
         modpar(posneg_data$age,posneg_data$mass)
 
-    # estimate fixed parameters use data object posneg_data (only first 
-    # 4 group levels for example's sake) and specify a fixed hatching 
-    # mass for curve optimization using \code{\link{SSposnegRichards}}
         modpar(posneg_data$age,posneg_data$mass)
         subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 53)
-        richardsR1.lis<-nlsList(mass~SSposnegRichards(age,Asym=Asym,K=K,Infl=Infl,M=M,RAsym=RAsym,Rk=Rk,Ri=Ri,RM=RM,modno=1)
+        richardsR1.lis<-nlsList(mass~SSposnegRichards(age,Asym=Asym,K=K,
+        	Infl=Infl,M=M,RAsym=RAsym,Rk=Rk,Ri=Ri,RM=RM,modno=1)
                         ,data=subdata)
-}
-)
+
+})

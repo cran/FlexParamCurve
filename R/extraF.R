@@ -25,31 +25,60 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
     ## parameter model is to be preferred.
     assign("legitmodel", "legitmodelreset", envir = .GlobalEnv)
     chk <- try(unlist(summary(submodel))["RSE"], silent = TRUE)
-    if (class(chk)[1] == "try-error")
+    if (class(chk)[1] == "try-error" | class(submodel)[1] != "nlsList" )
         submodel <- 1
     chk1 <- try(unlist(summary(genmodel))["RSE"], silent = TRUE)
-    if (class(chk1)[1] == "try-error")
+    if (class(chk1)[1] == "try-error" | class(genmodel)[1] != "nlsList" )
         genmodel <- 1
     if (class(submodel)[1] == "numeric" | class(genmodel)[1] ==
         "numeric") {
-        if (class(submodel)[1] == "numeric") {
-            is.na(submodel) <- TRUE
-            assign("legitmodel", genmodel, envir = .GlobalEnv)
-        }
-        if (class(genmodel)[1] == "numeric") {
-            is.na(genmodel) <- TRUE
-            assign("legitmodel", submodel, envir = .GlobalEnv)
-        }
         if (class(submodel)[1] == "numeric" & class(genmodel)[1] ==
             "numeric") {
             assign("legitmodel", 1, envir = .GlobalEnv)
-        }
         output <- data.frame(NA, NA, NA, NA, NA, NA)
-    } else {
+        } else {        
+         if (class(submodel)[1] == "numeric") {
+            is.na(submodel) <- TRUE
+            assign("legitmodel", genmodel, envir = .GlobalEnv)
+	 df1 <- as.numeric(unlist(summary(genmodel)["df.residual"]))
+	 sdf<- unlist(coef(genmodel)[1])
+	 lsdf <- length(sdf[!is.na(sdf)])
+	 if(lsdf == 0) lsdf =1
+	 df1 <- (df1 / lsdf ) * length(sdf)
+	 df1 <- as.integer(round(df1))
+         RSSa <- (as.numeric(unlist(summary(genmodel))["RSE"])^2) *
+            df1         
+         output <- data.frame(NA, df1, NA, NA, RSSa, NA)
+         }
+         if (class(genmodel)[1] == "numeric") {
+            is.na(genmodel) <- TRUE
+            assign("legitmodel", submodel, envir = .GlobalEnv)
+	 df2 <- as.numeric(unlist(summary(submodel)["df.residual"]))
+	 sdf<- unlist(coef(submodel)[1])
+	 lsdf <- length(sdf[!is.na(sdf)])
+	 if(lsdf == 0) lsdf =1
+	 df2 <- (df2 / lsdf ) * length(sdf)
+	 df2 <- as.integer(round(df2))			
+         RSSb <- (as.numeric(unlist(summary(submodel))["RSE"])^2) *
+            df2
+         output <- data.frame(NA, df2, NA, NA, NA, RSSb)    
+         }
+        }
+     } else {
         df1 <- as.numeric(unlist(summary(genmodel)["df.residual"]))
+	sdf<- unlist(coef(genmodel)[1])
+	lsdf <- length(sdf[!is.na(sdf)])
+	if(lsdf == 0) lsdf =1
+	df1 <- (df1 / lsdf ) * length(sdf)
+	df1 <- as.integer(round(df1))
         RSSa <- (as.numeric(unlist(summary(genmodel))["RSE"])^2) *
             df1
         df2 <- as.numeric(unlist(summary(submodel)["df.residual"]))
+	sdf<- unlist(coef(submodel)[1])
+	lsdf <- length(sdf[!is.na(sdf)])
+	if(lsdf == 0) lsdf =1
+	df2 <- (df2 / lsdf ) * length(sdf)
+	df2 <- as.integer(round(df2))
         RSSb <- (as.numeric(unlist(summary(submodel))["RSE"])^2) *
             df2
         F <- (RSSb - RSSa)/(df2 - df1)/(RSSa/df1)

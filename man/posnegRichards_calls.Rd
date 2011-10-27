@@ -12,12 +12,9 @@
 \format{
   This object of class \code{\link{list}} containing the components:
   \describe{
-    \item{Variable M models}{
-      a list of 17 models with 4 estimable positive parameters, a custom model (17)
+    \item{Examples of 36 calls}{
+      a list of 36 possible FlexParamCurve models, including a custom model (17)
       and two models used by internally by \code{\link{modpar}} (18 and 19)
-    }
-    \item{Fixed M models}{
-      a list of 17 models with 4 estimable positive parameters
     }
   }
 }
@@ -29,10 +26,14 @@
 # extract the call for fitting a nls model with 8-parameter positive-begative Richards curve (model 1)
 data(posnegRichards_calls)
 data(posneg_data)
-modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
-modtofit <- as.character( posnegRichards_calls [[ names(posnegRichards_calls [1]) ]] [1,] )
+modtofit <- as.character( posnegRichards_calls [[1]] [1,] )
 modtofit <- parse(text = modtofit)
 \donttest{
+modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
 eval(modtofit)}
+
+# view call for model 20
+posnegRichards_calls [[1]] [20,]
+
 }
 \keyword{datasets}

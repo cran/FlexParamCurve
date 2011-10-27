@@ -81,7 +81,7 @@ to the screen to inform the user of the progress of model selection
 # note forcemod is set to 3 so that models 21-36 are evaluated
 \donttest{
     richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-      Infl = Infl, M = 1, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = 1 , modno = 22)
+      Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri , modno = 22)
                         ,data = posneg_data)
    modseltable <- pn_mod_compare(subdata$age, subdata$mass,
       subdata$id, forcemod = 3, existing = TRUE)}

@@ -26,7 +26,9 @@ entire dataset, as in \code{\link{nls}}.
 
 Extra sum-of-squares is obtained from: \preformatted{F = (SS1 - SS2)(df1 - df2) / (SS2 / df2)}
 where SS = sum-of-squares and df = degrees of freedom, for the more reduced model (1) and the
-more general model (2), respectively.
+more general model (2), respectively. To account for missing individuals for different fits
+df are scaled in all models to the value they would be if all individuals fit successfully (note
+that if all individuals had the same fit, this would not influence extra sum of squares).
 
 If the F value is significant then the more general model provides a significant improvement
 over the reduced model, but if the models are not significantly different then the reduced
@@ -47,13 +49,14 @@ Springer-Verlag, New York.}
 \code{\link{pn_mod_compare}}}
 \examples{
 #fit and compare two nested nls models (7 vs 8 parameter models)
+\donttest{   
    data(posneg_data)
    modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
    richardsR1.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
    Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1)
                         , data = posneg_data)
    richardsR2.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-   Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = 1, modno = 2)
+   Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, modno = 2)
                         , data = posneg_data)
-   extraF.nls(richardsR2.nls, richardsR1.nls)
+   extraF.nls(richardsR2.nls, richardsR1.nls)}
 }

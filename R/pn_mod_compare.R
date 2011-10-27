@@ -80,22 +80,25 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
     if (class(richardsR12.lis)[1] == "try-error" | existing ==
         FALSE)
         richardsR12.lis <- try(nlsList(y ~ SSposnegRichards(x,
-            Asym = Asym, K = K, Infl = Infl, M = M, RAsym = 1,
-            Rk = 1, Ri = 1, RM = 1, modno = 12), data = userdata),
+            Asym = Asym, K = K, Infl = Infl, M = M, modno = 12), data = userdata),
             silent = TRUE)
     print("checking fit of positive section of the curve for fixed M*************************************")
     pnmodelparams <- get("pnmodelparams", envir = .GlobalEnv)
     change.pnparameters <- try(get("change.pnparameters", envir = .GlobalEnv),
         silent = TRUE)
-    dummy <- try(change.pnparameters(M = (fixef(richardsR12.lis)[4])),
-        silent = TRUE)
+    chk <- try(unlist(summary(richardsR12.lis))["RSE"], silent = TRUE)
+    	if (class(chk)[1] == "try-error" | class(richardsR12.lis)[1] != "nlsList" 
+     			 |  is.null(nrow(coef(richardsR12.lis))) == TRUE ){
+    	} else {    
+    		dummy <- try(change.pnparameters(M = (fixef(richardsR12.lis)[4])),
+    		silent = TRUE)
+    	} 
     richardsR20.lis <- try(get("richardsR20.lis", envir = .GlobalEnv),
         silent = TRUE)
     if (class(richardsR20.lis)[1] == "try-error" | existing ==
         FALSE)
         richardsR20.lis <- try(nlsList(y ~ SSposnegRichards(x,
-            Asym = Asym, K = K, Infl = Infl, M = 1, RAsym = 1,
-            Rk = 1, Ri = 1, RM = 1, modno = 20), data = userdata),
+            Asym = Asym, K = K, Infl = Infl, modno = 20), data = userdata),
             silent = TRUE)
     if ((class(richardsR20.lis)[1]) == "try-error") {
         print("3 parameter positive richards model failed*************************************")
@@ -109,8 +112,8 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
             richardsR12.lis <- 1
         }
     currentmodel <- 1
+    testmod <- try(extraF(richardsR20.lis, richardsR12.lis), silent = TRUE)
     if (forcemod == 0) {
-        testmod <- try(extraF(richardsR20.lis, richardsR12.lis))
         if (class(testmod) == "try-error") {
             modelsig = 0.1
         } else {
@@ -127,6 +130,13 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         }
     }
     mostreducedmod <- currentmodel
+    if (class(testmod) != "try-error") {
+    mostreducednm <- substr("richardsR20.lis", 10,
+                  11)
+    mostreducedmod <- richardsR20.lis
+    } else {
+    mostreducednm <- "NONE"
+    }
     if (forcemod == 3)
         {
             modelsig = 0.05
@@ -143,88 +153,88 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         modno <- c(21:36)
     }
     runmod <- function(userdata, modelno, modsig, existing = FALSE) {
-        savnm <- paste("richardsR", as.character(modelno), ".lis",
-            sep = "")
-        if (modelno[1] == 1) {
-            savM <- "M"
+		savnm <- paste("richardsR", as.character(modelno), ".lis",
+		    sep = "")
+		if (modelno[1] <20) {
+		    savM <- ",M = M"
         } else {
-            savM <- 1
+            savM <- ","
         }
         if (existing == FALSE) {
             if (modelno == 1 | modelno == 21)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
                   savM, ",RAsym=RAsym,Rk=Rk,Ri=Ri,RM=RM,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 2 | modelno == 22)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=RAsym,Rk=Rk,Ri=Ri,RM=1,modno=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",RAsym=RAsym,Rk=Rk,Ri=Ri,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 3 | modelno == 23)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=1,Rk=1,Ri=Ri,RM=RM,modno=", modelno,
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",Ri=Ri,RM=RM,modno=", modelno,
                   "),data=userdata)", sep = "")))), silent = TRUE)
             if (modelno == 4 | modelno == 24)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=RAsym,Rk=1,Ri=1,RM=RM,modno=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",RAsym=RAsym,RM=RM,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 5 | modelno == 25)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=1,Rk=1,Ri=1,RM=RM,modno=", modelno,
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",RM=RM,modno=", modelno,
                   "),data=userdata)", sep = "")))), silent = TRUE)
             if (modelno == 6 | modelno == 26)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=RAsym,Rk=1,Ri=Ri,RM=RM,modno=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",RAsym=RAsym,Ri=Ri,RM=RM,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 7 | modelno == 27)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=1,Rk=Rk,Ri=Ri,RM=RM,modno=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",Rk=Rk,Ri=Ri,RM=RM,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 8 | modelno == 28)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=RAsym,Rk=Rk,Ri=1,RM=RM,modno=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",RAsym=RAsym,Rk=Rk,RM=RM,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 9 | modelno == 29)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=1,Rk=Rk,Ri=1,RM=RM,modno=", modelno,
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",Rk=Rk,RM=RM,modno=", modelno,
                   "),data=userdata)", sep = "")))), silent = TRUE)
             if (modelno == 10 | modelno == 30)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=1,Rk=1,Ri=Ri,RM=1,modno=", modelno,
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",Ri=Ri,modno=", modelno,
                   "),data=userdata)", sep = "")))), silent = TRUE)
             if (modelno == 11 | modelno == 31)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=RAsym,Rk=1,Ri=1,RM=1,modno=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",RAsym=RAsym,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 12 | modelno == 32)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=1,Rk=1,Ri=1,RM=1,modno=", modelno,
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",modno=", modelno,
                   "),data=userdata)", sep = "")))), silent = TRUE)
             if (modelno == 13 | modelno == 33)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=RAsym,Rk=1,Ri=Ri,RM=1,modno=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",RAsym=RAsym,Ri=Ri,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 14 | modelno == 34)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=1,Rk=Rk,Ri=Ri,RM=1,modno=", modelno,
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",Rk=Rk,Ri=Ri,modno=", modelno,
                   "),data=userdata)", sep = "")))), silent = TRUE)
             if (modelno == 15 | modelno == 35)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=RAsym,Rk=Rk,Ri=1,RM=1,modno=",
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",RAsym=RAsym,Rk=Rk,modno=",
                   modelno, "),data=userdata)", sep = "")))),
                   silent = TRUE)
             if (modelno == 16 | modelno == 36)
-                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl,M=",
-                  savM, ",RAsym=1,Rk=Rk,Ri=1,RM=1,modno=", modelno,
+                mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym,K=K,Infl=Infl",
+                  savM, ",Rk=Rk,modno=", modelno,
                   "),data=userdata)", sep = "")))), silent = TRUE)
-        } else {
+        } else {0
             mod <- try(get(savnm, envir = .GlobalEnv), silent = TRUE)
         }
         if (class(mod)[[1]] != "nlsList")
@@ -249,7 +259,10 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
     initval <- c(rep(NA, 16))
     initval <- relist(initval, skel)
     for (i in 1:length(modno)) {
+    	print("################  ################  ##################  #################  ###############  #########")
+    	print(paste("Fitting model ",i," of ",length(modno),": richardsR",modno[i],".lis",sep=""))
         initval[i] <- runmod(userdata, modno[i], modelsig, existing = existing)
+        print(initval[i])
     }
     print("#########################################################################################################")
     print("Model fitting completed, summary of fits follows:")
@@ -267,6 +280,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
             sep = "")
         RSEstr <- "RSE"
         dfstr <- "df"
+        dfstr1 <- "df.residual"
         usefun <- unlist(strsplit(penaliz, "(n)"))
         model1 <- try(get(modnm, envir = .GlobalEnv), silent = TRUE)
         checkmod <- try(if (is.null(nrow(coef(model1))) == TRUE) {
@@ -288,7 +302,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
                 paste("sum(summary(model1)[['", dfstr, "']][,1],na.rm=TRUE)",
                   sep = ""))))
             modrank[i, 6] <- eval(parse(text = sprintf("%s",
-                paste("sum(summary(model1)[['", dfstr, "']][,1],na.rm=TRUE)",
+                paste("sum(summary(model1)[['", dfstr1, "']],na.rm=TRUE)",
                   sep = ""))))
             modrank[i, 7] <- length(coef(model1))
         } else {
@@ -326,18 +340,29 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
             } else {
             }
         }
+        if (modrank[i, 2] != -999) {
         modtemp <- eval(parse(text = sprintf("%s", modrank[i,
             1])))
         modnm <- paste("R", as.character(modno[i]), ".lis", sprintf("(%s)",
             length(coef(modtemp))), sep = "")
-        names(pvalmat)[i] <- modnm
         row.names(pvalmat)[i] <- paste("R", as.character(modno[i]),
-            sprintf("(%s)", length(coef(modtemp))), sep = "")
+            sprintf("(%s)", length(coef(modtemp))), sep = "")        
+        } else {
+        modtemp <- NULL
+        modnm <- paste("R", as.character(modno[i]), ".lis", sprintf("(%s)",0), sep = "")
+        row.names(pvalmat)[i] <- paste("R", as.character(modno[i]), ".lis", 
+        	sprintf("(%s)",0), sep = "")
+        }
+        names(pvalmat)[i] <- modnm
     }
     pvalmat <- apply(pvalmat, 1, function(x) round(x, 3))
-    modrank <- modrank[order(modrank[, 2], modrank[, 6]), ]
-    row.names(modrank) <- c(1:16)
     modrank[modrank == -999] <- NA
+    modrank[is.na(modrank[,2]),2] <- Inf
+    modrank[is.na(modrank[,6]),6] <- Inf
+    modrank <- modrank[order(modrank[, 2], modrank[, 6]), ]
+    modrank[(modrank[,2])==Inf,2] <- NA
+    modrank[(modrank[,6])==Inf,6] <- NA
+    row.names(modrank) <- c(1:16)
     print("...done")
     outp <- list(modrank, pvalmat)
     names(outp) <- c("Model rank table", "P values from pairwise extraF comparisons")
@@ -371,7 +396,7 @@ modseltable <- pn_mod_compare(subdata$age, subdata$mass,
 # note forcemod is set to 3 so that models 21-36 are evaluated
 subdata <- subset(posneg_data, as.numeric(row.names (posneg_data) ) < 40)
 richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-   Infl = Infl, M = 1, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = 1 , modno = 22)
+   Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri, modno = 22)
                         ,data = posneg_data)
 modseltable <- pn_mod_compare(subdata$age, subdata$mass,
     subdata$id, forcemod = 3, existing = TRUE)

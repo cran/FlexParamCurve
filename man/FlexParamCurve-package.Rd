@@ -5,6 +5,25 @@
 \description{selfStart functions and model selection tools to fit parametric curves in 
   \code{\link{nls}}, \code{\link{nlsList}} and \code{\link{nlme}} frameworks.}
 \details{
+
+    General approach for using package (also see examples below)
+    1) Run \eqn{modpar} to produce initial parameter estimates for your dataset. These are
+saved in object \eqn{pnmodelparams} and parameterbounds for subsequent fits are in
+\eqn{pnmodelparamsbounds}. All can be edited manually or using \eqn{change.pnparameters}.
+
+    2) Determine most appropriate model (number of necessary parameters) for your data
+using  \eqn{pn_mod_compare} or \eqn{pn_modselect_step} (these compare nested models using
+\eqn{extraF}). This may take some time as many \eqn{nlsList} objects are fitted.
+Note that if you perform this step, then you do not need to perform step 1.
+If you are sure of your model (e.g. it is a simple logistic) Step 2 may be unnecessary.
+
+    3) Fit \eqn{nls} or \eqn{nlsList} or \eqn{nlme} models using \eqn{SSposnegRichards} specifying
+the appropriate model number. Parameter bounds can be refined to improve fits by altering 
+\eqn{pnmodelparamsbounds}.
+
+    4) Plot your curves using eqn{posnegRichards_eqn} specifying the appropriate model number.
+
+
     User level functions include:
     
     \eqn{pn_mod_compare}
@@ -57,40 +76,52 @@ Enhances: \tab nlme\cr
 LazyLoad: \tab yes\cr}
 }
 \examples{
-# run all-model selection for posneg_data object without need to run any previous functions
+# run all-model selection for posneg_data object (Step 2) without need to run any previous functions
 \donttest{
 data(posneg_data)
 modseltable <- pn_mod_compare(posneg_data$age, posneg_data$mass,
     posneg_data$id, existing = FALSE)}
 
-# run backwards stepwise model selection for logist_data object
+# run backwards stepwise model selection (Step 2) for logist_data object without need to run any previous functions
 \donttest{
 data(logist_data)
 modseltable <- pn_modselect_step(logist_data$age, logist_data$mass,
     logist_data$id, existing = FALSE)}
 
-# estimate fixed parameters use data object posneg_data
+# estimate fixed parameters use data object posneg_data (Step 1)
 \donttest{
 modpar(posneg_data$age,posneg_data$mass)}
 
-# change fixed values of M and constrain hatching mass to 45.5 in a growth curve
+# change fixed values of M and constrain hatching mass to 45.5 in a growth curve (Step 1)
 \donttest{
 change.pnparameters(M=1,RM=0.5,first_y=45.5)}
     
-# fit nlsList object using 6 parameter model with values M and RM
+# fit nlsList object using 6 parameter model with values M and RM (Step 3)
 # fixed to value in pnmodelparams and then fit nlme model
 \donttest{
 richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-      Infl = Infl, M = 1, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = 1,
+      Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri,
       modno = 22), data = posneg_data)
- richardsR22.nlme <- nlme(richardsR22.lis)}
+ richardsR22.nlme <- nlme(richardsR22.lis, random = pdDiag(Asym + Infl ~ 1))}
  
-# fit reduced nlsList model and then compare performance with extraF
+# fit reduced nlsList model and then compare performance with extraF (manual version of Step 2)
 \donttest{
-richardsR30.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-      Infl = Infl, M = 1, RAsym = 1, Rk = 1, Ri = Ri, RM = 1,
-      modno = 30), data = posneg_data)
- extraF(richardsR30.lis,richardsR22.lis)}
+richardsR20.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
+      Infl = Infl, modno = 20), data = posneg_data)
+ extraF(richardsR20.lis,richardsR22.lis)}
+ 
+ # fit and plot a logistic curve (M=1) to data, note that all parameters set to equal 1 here are ignored
+ # note code here forces \eqn{modpar} to only estimate 4 curve parameters (simple Richards curve)
+\donttest{
+data(logist_data)
+modpar(logist_data$age,logist_data$mass,force4par=TRUE)
+change.pnparameters(M=1) # set M to 1 for subsequent fit
+richardsR20.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
+      Infl = Infl, modno = 20), data = logist_data)
+plot(logist_data$age , logist_data$mass, xlab = "age", ylab = "mass", pch = ".", cex = 0.7) 
+par <- coef( richardsR20.nls )
+#(Step 4)
+curve(posnegRichards_eqn(x, Asym = par[1], K = par[2], Infl = par[3], modno = 20), add= TRUE)}
 }
 \seealso{\code{\link{nlme}}
 \code{\link{SSlogis}}

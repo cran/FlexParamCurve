@@ -48,14 +48,15 @@
 \examples{
 require(stats); require(graphics)
 data(logist_data)
-modpar(logist_data$age, logist_data$mass) #create pnmodelparams for fixed parameters
-plot(mass ~ age, data = logist_data, subset = id == "0.001",
+modpar(logist_data$age, logist_data$mass, force4par = TRUE) #create pnmodelparams for fixed parameters
+plot(mass ~ age, data = logist_data, subset = id == "0.002",
      xlab = "Chick age (day)", las = 1,
      ylab = "Chick mass (g)",
-     main = "logist_data data and fitted curve (Chick #1 only)")
-fm1 <- nls(mass ~ SSposnegRichards(age,Asym=Asym,K=K,Infl=Infl,M=1,RAsym=1,
-           Rk=1,Ri=1,RM=1,modno=20),
-           data = logist_data, subset = id == "0.001")
+     main = "logist_data and fitted curve (Chick #2 only)")
+change.pnparameters(M=1) # set curve to logistic (M=1) in subsequent fit
+fm1 <- nls(mass ~ SSposnegRichards(age,Asym=Asym,K=K,Infl=Infl,
+           modno=20),
+           data = logist_data, subset = id == "0.002")
 age <- seq(0, 166, length.out = 101)
 lines(age, predict(fm1, list(age = age)))
 }

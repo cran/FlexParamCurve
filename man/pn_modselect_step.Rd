@@ -97,7 +97,7 @@ data(posneg_data)
 \donttest{
 subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 40)
    richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-      Infl = Infl, M = 1, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = 1 , modno = 22)
+      Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri , modno = 22)
                         ,data = subdata)
    modseltable <- pn_modselect_step(subdata$age, subdata$mass,
       subdata$id, forcemod = 3, existing = TRUE)}
