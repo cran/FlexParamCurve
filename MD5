@@ -1,10 +1,10 @@
-7d2023e5034e9a93f7bf4e83b8e4def2 *DESCRIPTION
+124006630a70d78ea14a69e389aa1b01 *DESCRIPTION
 7acfa491c1f26c140a56d7be8a4f04fc *NAMESPACE
-698ea41445f79f62820c654efba6b065 *R/SSposnegRichards.R
+0d6e210eed44e32aadbb87c48f840910 *R/SSposnegRichards.R
 c58994a1c955ba491f3bae526889aa47 *R/change.pnparameters.R
 e82556a9edefe3b52d8742dc48f17c07 *R/extraF.R
 8f8dd0e3a0d6d506d6d804218609a7e0 *R/extraF.nls.R
-1571961374fe96be53a441f8be372282 *R/modpar.R
+c533a7fcaa72921e1949d61f5e577322 *R/modpar.R
 50116f0dc634bf67e7eb7b87104f2e32 *R/pn_mod_compare.R
 6b44081fc9e7a0f3d1c488bd817d5f8f *R/pn_modselect_step.R
 6daa1da3a9d7f560183cbdc5fa2e22b5 *R/posnegRichardsInit.R

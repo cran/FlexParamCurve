@@ -101,9 +101,11 @@ structure(function
      if (is.na(value[1]) == TRUE){
         try(value <- getInitial(y ~ SSposnegRichards(x, Asym = Asym,
          	             K = K, Infl = Infl, M = M, modno = 19), data = xy), silent = detl)
-            bndsvals<-get("pnmodelparams", envir = .GlobalEnv)
-            bndsvals[5:8]<-bndsvals[1:4]
+            bndsvals<-get("pnmodelparamsbounds", envir = .GlobalEnv)
+            bndsvals[9:16]<-bndsvals[1:8]
             assign("pnmodelparamsbounds",bndsvals, envir = .GlobalEnv)
+            			} else {
+            assign("pnmodelparamsbounds",tst, envir = .GlobalEnv)			
             			}
          savvalue<-value
          value<-NA

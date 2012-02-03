@@ -481,8 +481,19 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         Intage <- max(xy$x)
     if (modelparams$force4par == TRUE) {
         xyE <- xy
+        maxIval<- try(max(xyE$x, na.rm = TRUE) - 
+        	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
+        if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE)  
     } else {
         xyE <- subset(xy, xy$x <= Intage)
+        maxIval<- try(max(xyE$x, na.rm = TRUE) - 
+        	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
+        if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE)      
+        xyL <- data.frame(rep(NA, 1))
+	xyL <- subset(xy, xy$x >= Intage)
+        maxRival<- try(max(xyL$x, na.rm = TRUE) - 
+        	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
+  	if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)        
     }
     if (nrow(xyE) < 5) {
         stop("ERROR: too few distinct input values to fit the positive Richards model, aborting")
@@ -707,6 +718,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 }
                 return(repl)
             }
+            if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05) 
                 Kmin = 1e-05},silent = TRUE)
             if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
@@ -782,6 +794,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 while (abs(Imin * Kmax) > 700) Imin = Imin * 
                   0.9
             }
+            if( !is.na(Imax) ) {
+            if (Imax > maxIval) Imax <- maxIval - ((maxIval - min(xy$x)) * 0.95)}
             Mmax = Mmax - (abs(Mmax - M) * 0.75)
             Mmin = Mmin + (abs(Mmin - M) * 0.75)
             pars <- 1
@@ -864,6 +878,10 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                     0.9
                   while (abs(Imin * Kmax) > 700) Imin = Imin * 
                     0.9
+                  maxIval<- try(max(xyE$x, na.rm = TRUE) - 
+                  	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
+       		  if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE) 
+       		  if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
                   if (abs(M) < 0.1) {
                     Mmax = 0.5
                     Mmin = -0.5
@@ -879,7 +897,30 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   Rimin = Imin
                   RMmax = Mmax
                   RMmin = Mmin
+                  names(Amax) <- ("Amax")
+ 		  names(Amin) <- ("Amin")
+                  names(Kmax) <- ("Kmax")
+                  names(Kmin) <- ("Kmin")
+ 		  names(Imin) <- ("Imin")
+                  names(Imax) <- ("Imax")
+                  names(Mmax) <- ("Mmax")
+ 		  names(Mmin) <- ("Mmin")
+                  names(RAmax) <- ("RAmax")
+            	  names(RAmin) <- ("RAmin")
+                  names(Rkmax) <- ("Rkmax")
+  		  names(Rkmin) <- ("Rkmin")
+ 		  names(Rimin) <- ("Rimin")
+                  names(Rimax) <- ("Rimax")
+                  names(RMmax) <- ("RMmax")
+ 		  names(RMmin) <- ("RMmin")
+                  maxRival<- try(max(xyL$x, na.rm = TRUE) - 
+                  	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
+                  if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+		  if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 } else {
+                  names(testpar) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
+       			 "Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
+        		"Rimin", "Rimax", "RMmin", "RMmax")
                   Amax = testpar$Amax
                   Amin = testpar$Amin
                   Kmax = testpar$Kmax
@@ -896,6 +937,14 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   Rimin = testpar$Rimin
                   RMmax = testpar$RMmax
                   RMmin = testpar$RMmin
+                  maxIval<- try(max(xyE$x, na.rm = TRUE) - 
+		       (max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
+       		
+                  maxRival<- try(max(xyL$x, na.rm = TRUE) - 
+		      (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
+		  if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+                  if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
+                  if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 }
                 skel <- rep(list(1), 15)
                 exportparams <- c(Asym, K, Infl, M, (Asym * 0.05), 
@@ -925,6 +974,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 assign("pnmodelparamsbounds", exportparamsbounds, 
                   envir = globalenv())
             }
+            if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05 & Kmin > -1e-05) 
                			 Kmin = 1e-05 * sign(Kmin)},silent = TRUE)
 	    if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
@@ -1022,6 +1072,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             Imin = Infl + (abs(Infl) * -1.5)
             while (abs(Imax * Kmax) > 700) Imax = Imax * 0.9
             while (abs(Imin * Kmax) > 700) Imin = Imin * 0.9
+            if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
             if (abs(M) < 0.1) {
                 Mmax = 0.25
                 Mmin = -0.25
@@ -1053,6 +1104,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     if (modelparams$force4par == FALSE) {
         xyL <- data.frame(rep(NA, 1))
         xyL <- subset(xy, xy$x >= Intage)
+                maxRival<- try(max(xyL$x, na.rm = TRUE) - (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
+  		if(class(maxRival) == "try-error") maxRival = max(xy$x, na.rm=TRUE)
         if (is.na(modelparams$twocomponent_age) == FALSE) 
             xyL <- subset(xy, xy$x > Intage)
         if (nrow(xyL) < 3 | modno == 12 | modno == 20 | modno == 
@@ -1210,6 +1263,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   0.9
                 while (abs(Rimin * Rkmax) > 700) Rimin = Rimin * 
                   0.9
+                if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 if (abs(RM) < 0.1) {
                   RMmax = 0.5
                   RMmin = -0.5
@@ -1226,6 +1280,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                Rimin = Imin
                RMmax = Mmax
                RMmin = Mmin
+               if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                }
                 skel <- rep(list(1), 15)
                 exportparams <- c(Asym, K, Infl, M, RAsym, Rk, 
@@ -1419,6 +1474,21 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 }, silent = TRUE)
                 options(warn = 0)
                 return(evl)
+            }
+            if( is.na(inputval[1])) {
+            	inputval<-val1
+            	} else {
+            	chinputval <- data.frame(t(inputval))
+            	chinputmax <- data.frame(t(inputmax))
+            	names(chinputval) <- names(inputval)
+            	chmx<-paste(substr(names(inputval),1,2),"max","")
+            	chmx<-sub(" ","",chmx)
+            	chmx<-sub(" ","",chmx)
+            	names(chinputmax) <- chmx
+            	if (is.null(chinputval$Ri) == FALSE) {
+            		if (chinputval$Ri >= chinputmax$Rimax) 
+            			chinputval$Ri <- chinputmax$Rimax - ((chinputmax$Rimax - min(xy$x, na.rm=TRUE)) * 0.95)
+           	 }
             }
             oppar = 0
             is.na(oppar) <- TRUE
@@ -1915,6 +1985,21 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   names(upbnds) <- nmbndsav
                   oppar1 <- data.frame(52)
                   names(oppar1) <- c("convergence")
+         	  if( is.na(inputval[1])) {
+          	  	inputval<-val1
+          	  	} else {
+          	  	chinputval <- data.frame(t(inputval))
+          	  	chinputmax <- data.frame(t(inputmax))
+			names(chinputval) <- names(inputval)
+            		chmx<-paste(substr(names(inputval),1,2),"max","")
+            		chmx<-sub(" ","",chmx)
+            		chmx<-sub(" ","",chmx)
+            		names(chinputmax) <- chmx
+            	  	if (is.null(chinputval$Ri) == FALSE) {
+          	  		if (chinputval$Ri >= chinputmax$Rimax) 
+          	  			chinputval$Ri <- chinputmax$Rimax - ((chinputmax$Rimax - min(xy$x, na.rm=TRUE)) * 0.95)
+          	 	 }
+          	  }
                   if (repoptm == 1) {
                     try(oppar1 <- (optim(value, richardsR, method = "L-BFGS-B", 
                       lower = dnbnds, upper = upbnds, control = list(maxit = 2000))), 
@@ -2064,6 +2149,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         Imin = Infl + (abs(Infl) * -2.5)
         while (abs(Imax * Kmax) > 700) Imax = Imax * 0.9
         while (abs(Imin * Kmax) > 700) Imin = Imin * 0.9
+        if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
         if (abs(M) < 0.1) {
             Mmax = 0.5
             Mmin = -0.5
@@ -2084,6 +2170,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             Rimin = Imin
             RMmax = Mmax
             RMmin = Mmin
+            if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
+            if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
         } else {
             RAsym <- NA
             Rk <- NA
