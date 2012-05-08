@@ -20,7 +20,7 @@ the function will produce seemingly adequate output with non-nested models. The 
 check that models are nested prior to use.
 
 This function is primarily designed to be called by the model selection functions
-\code{\link{pn_modselect_step}} and \code{\link{pn_mod_compare}} but can be used independently.
+\code{\link{pn.modselect.step}} and \code{\link{pn.mod.compare}} but can be used independently.
 
 Extra sum-of-squares is obtained from: \preformatted{F = (SS1 - SS2)(df1 - df2) / (SS2 / df2)}
 where SS = sum-of-squares and df = degrees of freedom, for the more reduced model (1) and the
@@ -28,7 +28,15 @@ more general model (2), respectively.
 
 If the F value is significant then the more general model provides a significant improvement
 over the reduced model, but if the models are not significantly different then the reduced
-parameter model is to be preferred.}
+parameter model is to be preferred.
+
+In extraF, the value for the df is increased to the value expected if all groups (levels) were 
+fitted [i.e. df1  =  (df / # levels fit) * # levels in data]. Residual sum of squares (RSS) is 
+the calculated as residual square error * df1. Thus, RSS is enlarged for 
+models with missing levels so all models are compared based on the variability expected 
+if all levels had been fitted. This allows the Fstat from extraF to be independent of missing levels
+in either of the two models.
+}
 \value{A \code{\link{data.frame}} listing the names of the models compared, F,
 numerator degrees of freedom,
 demonimator degrees of freedom, P value and the residual sum of squares for both the general
@@ -41,20 +49,20 @@ Springer-Verlag, New York.}
 
 \seealso{\code{\link{extraF.nls}}
 \code{\link{nlsList}}
-\code{\link{pn_modselect_step}}
-\code{\link{pn_mod_compare}}}
+\code{\link{pn.modselect.step}}
+\code{\link{pn.mod.compare}}}
 \examples{
    #compare two nested nlsList models (4 vs 8 parameter models)
 \donttest{
-   data(posneg_data)
-   modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
+   data(posneg.data)
+   modpar(posneg.data$age, posneg.data$mass, pn.options.name = "myoptions")
    # (only first 4 group levels in data used for example's sake)
-   subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 53)
+   subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 53)
    richardsR2.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-     Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,modno = 2)
+     Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,modno = 2, pn.options = myoptions)
                         , data = subdata)
    richardsR12.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-     Infl = Infl, M = M, modno = 12)
+     Infl = Infl, M = M, modno = 12, pn.options = myoptions)
                         , data = subdata)
-   extraF(richardsR12.lis, richardsR1.lis)}
+   extraF(richardsR12.lis, richardsR2.lis)}
 }

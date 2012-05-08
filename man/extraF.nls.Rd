@@ -45,18 +45,18 @@ Springer-Verlag, New York.}
 
 \seealso{\code{\link{extraF}}
 \code{\link{nls}}
-\code{\link{pn_modselect_step}}
-\code{\link{pn_mod_compare}}}
+\code{\link{pn.modselect.step}}
+\code{\link{pn.mod.compare}}}
 \examples{
 #fit and compare two nested nls models (7 vs 8 parameter models)
 \donttest{   
-   data(posneg_data)
-   modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
+   data(posneg.data)
+   modpar(posneg.data$age, posneg.data$mass, pn.options.name = "myoptions") #create list for fixed parameters
    richardsR1.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-   Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1)
-                        , data = posneg_data)
+   Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1, pn.options = myoptions)
+                        , data = posneg.data)
    richardsR2.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-   Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, modno = 2)
-                        , data = posneg_data)
+   Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, modno = 2, pn.options = myoptions)
+                        , data = posneg.data)
    extraF.nls(richardsR2.nls, richardsR1.nls)}
 }

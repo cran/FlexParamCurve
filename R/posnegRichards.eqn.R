@@ -1,11 +1,17 @@
-posnegRichards_eqn <-
+posnegRichards.eqn <-
 structure(function(x, Asym = NA,
     K = NA, Infl = NA, M = NA, RAsym = NA, Rk = NA, Ri = NA, RM = NA,
-    modno) {
-    pnmodelparamsbounds <-try( get("pnmodelparamsbounds", envir = .GlobalEnv),
-        silent = TRUE)
-    if (class(pnmodelparamsbounds) == "try-error") stop ("Run modpar before using
-    		this function. See ?modpar")
+    modno, pn.options) {
+    params<-list(Asym = Asym, K = K, Infl = Infl, M = M, RAsym = RAsym,
+        Rk = Rk, Ri = Ri, RM = RM, first.y = NA, x.at.first.y = NA, 
+        last.y = NA, x.at.last.y = NA, twocomponent.x = NA, 
+        verbose = FALSE, force4par = FALSE)
+    pnmodelparams <- rep(list(NA),15)
+    pnmodelparams[14]<-FALSE
+    pnmodelparams[15]<-FALSE
+    pnopt<- get(as.character( pn.options[1] ), .GlobalEnv)
+    names(pnmodelparams)<-names(params)
+    pnmodelparams[ names(pnmodelparams) %in% names(pnopt) ] <- pnopt[ names(pnopt) %in% names(pnmodelparams) ]
     if (is.na(Asym[1])) stop(paste("Parameter Asym required for modno = ", modno,
     	" but is absent from user-provided call", sep = ""))
     if (is.na(Infl[1])) stop(paste("Parameter Infl required for modno = ", modno,
@@ -76,23 +82,28 @@ structure(function(x, Asym = NA,
     }
     },silent = TRUE)
     }
-    if (!is.na(pnmodelparams$twocomponent_age)) {
-        if (pnmodelparams$force4par == TRUE)
+    force4par<-pnmodelparams$force4par
+    if(modno == 12 | modno == 32) {
+    force4par = TRUE
+    print("note: the model selected does not have any second curve parameters (i.e. is monotonic)")
+    					}
+    if (!is.na(pnmodelparams$twocomponent.x)) {
+        if (force4par == TRUE)
             stop("Cannot force a two component Richards model to have a single component.\nSet force4par to FALSE")
-        c((Asym/Re(as.complex(1 + M * exp(-K * ((x[x <= pnmodelparams$twocomponent_age]) -
+        c((Asym/Re(as.complex(1 + M * exp(-K * ((x[x <= pnmodelparams$twocomponent.x]) -
             Infl)))^(fractM))), (RAsym/Re(as.complex(1 + RM *
-            exp(-Rk * ((x[x > pnmodelparams$twocomponent_age]) -
+            exp(-Rk * ((x[x > pnmodelparams$twocomponent.x]) -
                 Ri)))^(fractRM))))
     } else {
         if (modno == 17) {
-            if (pnmodelparams$force4par == TRUE) {
+            if (force4par == TRUE) {
                 Asym/Re(as.complex(1 + exp(Infl - x)/M))
             } else {
                 (Asym/Re(as.complex(1 + exp(Infl - x)/M))) +
                   (RAsym/Re(as.complex(1 + exp(Ri - x)/RM)))
             }
         } else {
-            if (pnmodelparams$force4par == TRUE) {
+            if (force4par == TRUE) {
                 (Asym/Re(as.complex(1 + M * exp(-K * ((x) - Infl)))^(fractM)))
             } else {
                 (Asym/Re(as.complex(1 + M * exp(-K * ((x) - Infl)))^(fractM))) +
@@ -103,13 +114,13 @@ structure(function(x, Asym = NA,
     }
 }, ex = function(){
     require(graphics)
-    data(posneg_data)
-    modpar(posneg_data$age, posneg_data$mass)
-    y <- posnegRichards_eqn(10, 1000, 0.5, 25, 1, 100, 0.5, 125, 1, modno = 1)
+    data(posneg.data)
+    modpar(posneg.data$age, posneg.data$mass)
+    y <- posnegRichards.eqn(10, 1000, 0.5, 25, 1, 100, 0.5, 125, 1, modno = 1)
 
-    y <- posnegRichards_eqn(10 ,1000 ,0.5 ,25 ,1 ,100 ,0.5 ,125 ,1 ,modno = 12)
+    y <- posnegRichards.eqn(10 ,1000 ,0.5 ,25 ,1 ,100 ,0.5 ,125 ,1 ,modno = 12)
 
-    plot(1:200 ,posnegRichards_eqn(1:200 ,1000 ,0.5 ,25 ,1 ,100 ,0.5 ,125 ,1 ,modno = 12),xlim=c(1, 200),
+    plot(1:200 ,posnegRichards.eqn(1:200 ,1000 ,0.5 ,25 ,1 ,100 ,0.5 ,125 ,1 ,modno = 12),xlim=c(1, 200),
     xlab = "x", ylab = "y",pch = 1, cex = 0.7)
     }
 )

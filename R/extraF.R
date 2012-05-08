@@ -14,7 +14,7 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
     ## check that models are nested prior to use.
     ##
     ## This function is primarily designed to be called by the model selection functions
-    ## \code{\link{pn_modselect_step}} and \code{\link{pn_mod_compare}} but can be used independently.
+    ## \code{\link{pn.modselect.step}} and \code{\link{pn.mod.compare}} but can be used independently.
     ##
     ## Extra sum-of-squares is obtained from: \preformatted{F = (SS1 - SS2)(df1 - df2) / (SS2 / df2)}
     ## where SS = sum-of-squares and df = degrees of freedom, for the more reduced model (1) and the
@@ -99,15 +99,15 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
 ## Springer-Verlag, New York.
 ##seealso<< \code{\link{extraF.nls}}
 ##  \code{\link{nlsList}}
-##  \code{\link{pn_modselect_step}}
-##  \code{\link{pn_mod_compare}}
+##  \code{\link{pn.modselect.step}}
+##  \code{\link{pn.mod.compare}}
 }
 , ex = function(){
    #compare two nested nlsList models (4 vs 8 parameter models)
-   data(posneg_data)
-   modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
+   data(posneg.data)
+   modpar(posneg.data$age, posneg.data$mass) #create pnmodelparams for fixed parameters
    # (only first 4 group levels in data used for example's sake)
-   subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 53)
+   subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 53)
    richardsR1.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
    Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1)
                         , data = subdata)

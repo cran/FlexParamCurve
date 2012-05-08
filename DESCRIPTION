@@ -1,8 +1,8 @@
 Package: FlexParamCurve
 Type: Package
 Title: Tools to Fit Flexible Parametric Curves
-Version: 1.3
-Date: 2012-02-03
+Version: 1.4
+Date: 2012-05-08
 Author: Stephen Oswald
 Maintainer: Stephen Oswald <ozsao23@hotmail.com>
 Description: selfStart functions and model selection tools to fit
@@ -12,6 +12,6 @@ Depends: nlme
 Suggests: richards
 Enhances: nlme, richards
 LazyLoad: yes
-Packaged: 2012-02-04 04:41:32 UTC; oswald
+Packaged: 2012-05-09 02:54:54 UTC; oswald
 Repository: CRAN
-Date/Publication: 2012-02-04 16:07:12
+Date/Publication: 2012-05-09 04:06:48

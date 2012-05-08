@@ -8,26 +8,28 @@ structure(function
                                Rk = NA,
                                 Ri = NA,
                                 RM = NA,
-                                first_y = NA,
-                                x_at_first_y = NA,
-                                last_y = NA,
-                                x_at_last_y = NA,
-				twocomponent_age = NA,
+                                first.y = NA,
+                                x.at.first.y = NA,
+                                last.y = NA,
+                                x.at.last.y = NA,
+				twocomponent.x = NA,
 				verbose = NA,
-				force4par = NA
+				force4par = NA,
+				pn.options
 				) {
     newparams <- list(Asym = Asym, K = K, Infl = Infl, M = M, RAsym = RAsym,
-        Rk = Rk, Ri = Ri, RM = RM, first_y = first_y, x_at_first_y = x_at_first_y, 
-        last_y = last_y,
-        x_at_last_y = x_at_last_y, twocomponent_age = twocomponent_age, 
+        Rk = Rk, Ri = Ri, RM = RM, first.y = first.y, x.at.first.y = x.at.first.y, 
+        last.y = last.y,
+        x.at.last.y = x.at.last.y, twocomponent.x = twocomponent.x, 
         verbose = verbose, force4par = force4par)
-    adjmodelparams <- get("pnmodelparams", envir = .GlobalEnv)
-    for (i in 1:15) {
+    pnoptnm<- as.character( pn.options[1] ) 
+    adjmodelparams <- get(pnoptnm, envir = .GlobalEnv)
+     for (i in 1:15) {
         if (is.na(newparams[i]) == FALSE)
-            adjmodelparams[i] <- newparams[i]
+            adjmodelparams[names(adjmodelparams) %in% names(newparams[i])] <- newparams[i]
     }
-    names(adjmodelparams) <- names(newparams)
-    assign("pnmodelparams", adjmodelparams, envir = globalenv())
+    adjmodelparams <- adjmodelparams[names(adjmodelparams) %in% names(newparams)]
+    pnmodelparams <- adjmodelparams 
     Amax = pnmodelparams$Asym + (abs(pnmodelparams$Asym) * 2.5)
     Amin = pnmodelparams$Asym - (abs(pnmodelparams$Asym) * 0.5)
     Kmax = pnmodelparams$K + (abs(pnmodelparams$K) * 0.5)
@@ -63,14 +65,18 @@ structure(function
     names(value3) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
         "Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
         "Rimin", "Rimax", "RMmin", "RMmax")
-    assign("pnmodelparamsbounds", value3, envir = globalenv())
-    return(adjmodelparams)
+    tmplate <- get(pnoptnm, envir = .GlobalEnv)
+    adjmodelparams[names(adjmodelparams) %in% names(value3)] <- value3[names(value3) %in% names(value3)]
+    "%w/o%" <- function(x, y) x[!x %in% y] #--  x without y
+    tmplate[names(tmplate) %in% names(adjmodelparams)] <- adjmodelparams[names(adjmodelparams) %in% names(adjmodelparams)]
+    assign(pnoptnm, tmplate, .GlobalEnv) 
+    return(tmplate)
 }
 , ex = function(){
-data(posneg_data)
-modpar(posneg_data$age,posneg_data$mass)
+data(posneg.data)
+modpar(posneg.data$age,posneg.data$mass)
 change.pnparameters(Asym=10000,Infl=80,M=5,RAsym=10000,Ri=240,RM=5)
 
-change.pnparameters(M=1,RM=0.5,first_y=45.5)
+change.pnparameters(M=1,RM=0.5,first.y=45.5)
 }
 )

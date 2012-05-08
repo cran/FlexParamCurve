@@ -1,14 +1,15 @@
-\name{pn_mod_compare}
-\alias{pn_mod_compare}
+\name{pn.mod.compare}
+\alias{pn.mod.compare}
 \title{Compare All Possible Positive-Negative Richards \eqn{nlslist} Models}
 
 \usage{
-pn_mod_compare(x,
+pn.mod.compare(x,
 y,
 grp,
 forcemod = 0,
 existing = FALSE,
-penaliz = "1/sqrt(n)")
+penaliz = "1/sqrt(n)",
+pn.options)
 }
 \arguments{
   \item{x}{a numeric vector of the primary predictor}
@@ -19,6 +20,10 @@ the dataset}
   \item{existing}{optional logical value specifying whether some of the relevant models
 have already been fitted}
   \item{penaliz}{optional character value to determine how models are ranked (see Details)}
+  \item{pn.options}{required character string specifying name of 
+\code{\link{list}} object populated with starting 
+parameter estimates, fitting options and bounds}
+
 }
 \description{This function performs model selection for \code{\link{nlsList}} models fitted using
  \code{\link{SSposnegRichards}}.}
@@ -29,7 +34,7 @@ If model 12 provides superior performance (variable values of  M) then 16 models
 are run
 (models 1 through 16), otherwise the models with fixed M are fitted (models 21 through 36).
 Fitting these \code{\link{nlsList}} models can be time-consuming (2-4 hours using the dataset
-\code{\link{posneg_data}} that encompasses 100 individuals) and if several of the relevant
+\code{\link{posneg.data}} that encompasses 100 individuals) and if several of the relevant
 models are already fitted the option existing=TRUE can be used to avoid refitting models that
 already exist globally (note that a model object in which no grouping levels were successfully
 parameterized will be refitted, as will objects that are not of class nlsList).
@@ -59,35 +64,36 @@ the more reduced model
 (see \code{\link{extraF}} and \code{\link{SSposnegRichards}}).}
 
 \author{Stephen Oswald <ozsao23@hotmail.com>}
-\note{If object \eqn{pnmodelparams} does not exist, \code{\link{modpar}}
-will be called automatically prior to model selection. During selection, text is output
-to the screen to inform the user of the progress of model selection
-(which model is being fitted, which were fitted successfully)}
+\note{If appropriate bounds (or starting parameters) are not available in the list specified by the variable supplied 
+to \code{pn.options}, \code{\link{modpar}} will be called automatically prior to model selection. 
+During selection, text is output to the screen to inform the user of the progress of model selection
+(which model is being fitted, which were fit successfully)}
 
 
 \seealso{\code{\link{extraF}}
 \code{\link{SSposnegRichards}}
 \code{\link{nlsList}}}
 \examples{
-#run model selection for posneg_data object (only first 3 group levels for example's sake)
+#these examples will take a long while to run as they have to complete the 32 model comparison
+#run model selection for posneg.data object (only first 3 group levels for example's sake)
 \donttest{
-   data(posneg_data)
-   subdata <- subset(posneg_data, as.numeric(row.names (posneg_data) ) < 40)
-   modseltable <- pn_mod_compare(subdata$age, subdata$mass,
-      subdata$id, existing = FALSE)}
+   data(posneg.data)
+   subdata <- subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
+   modseltable <- pn.mod.compare(subdata$age, subdata$mass,
+      subdata$id, existing = FALSE, pn.options = "myoptions")}
     
 #fit nlsList model initially and then run model selection
-#for posneg_data object when at least one model is already fit
+#for posneg.data object when at least one model is already fit
 # note forcemod is set to 3 so that models 21-36 are evaluated
 \donttest{
     richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
       Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri , modno = 22)
-                        ,data = posneg_data)
-   modseltable <- pn_mod_compare(subdata$age, subdata$mass,
-      subdata$id, forcemod = 3, existing = TRUE)}
+                        ,data = posneg.data, pn.options = "myoptions")
+   modseltable <- pn.mod.compare(subdata$age, subdata$mass,
+      subdata$id, forcemod = 3, existing = TRUE, pn.options = "myoptions")}
  
 #run model selection ranked by residual standard error*sample size
 \donttest{
-    modseltable <- pn_mod_compare(subdata$age, subdata$mass,
-      subdata$id, penaliz='1*(n)', existing = TRUE)}
+    modseltable <- pn.mod.compare(subdata$age, subdata$mass,
+      subdata$id, penaliz='1*(n)', existing = TRUE, pn.options = "myoptions")}
 }

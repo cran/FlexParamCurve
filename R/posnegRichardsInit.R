@@ -1,18 +1,73 @@
 posnegRichardsInit <-
-function(mCall, LHS, data, modno) {
+function(mCall, LHS, data, modno, pn.options) {
     xy <- sortedXyData(mCall[["x"]], LHS, data)
+    substparams<-NA
+    optnm <- mCall[["pn.options"]]
+    optvarnm <- as.character(optnm)
+    optvar<- get(optvarnm, .GlobalEnv) 
+	    skel <- rep(list(1), 15)
+	    pnmodelparams <- c(rep(NA, 12),rep(FALSE,3))
+	    pnmodelparams <- relist(pnmodelparams, skel)	    
+	    names(pnmodelparams) <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
+		"Ri", "RM", "first.y", "x.at.first.y", "last.y", "x.at.last.y",
+		"twocomponent.x","verbose","force4par")  
+	    skel <- rep(list(1), 16)
+	    pnmodelparamsbounds <- c(rep(NA, 16))
+	    pnmodelparamsbounds <- relist(pnmodelparamsbounds, skel)
+	    names(pnmodelparamsbounds) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
+		"Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
+		"Rimin", "Rimax", "RMmin", "RMmax")
+	    userpar <- optvar[which(names(optvar) %in% names(pnmodelparams))]
+	    userparbounds <- optvar[which(names(optvar) %in% names(pnmodelparamsbounds))]
+	    parseval <- function(txt1,evtxt,txt2) {
+	    callout<- parse(text=sprintf("%s",paste(txt1,as.character(evtxt),txt2,sep="")))
+	    return(eval(callout))
+    	        				  }  
+	    options(warn=-1)
+	    pnmodelparams[which(names(pnmodelparams) %in% names(userpar))] <- userpar
+	    pnmodelparamsbounds[which(names(pnmodelparamsbounds) %in% names(userparbounds))] <- userparbounds	
+	    options(warn=0)
+	    parsprovided <- pnmodelparams[which(!is.na(pnmodelparams))] 
+	    boundsprovided <- pnmodelparamsbounds[which(!is.na(pnmodelparamsbounds))]
+	    splnms <- function(x) strsplit(names(x),"m")
+	    try(if(names(parsprovided)[1] == "Asym") names(parsprovided)[1] <-"A",silent=TRUE)
+	    try(if(names(parsprovided)[3] == "Infl") names(parsprovided)[3] <-"I",silent=TRUE)
+	    matchbounds <-  names(pnmodelparamsbounds[which(sapply(splnms(boundsprovided), function(x) substring(x[[1]],1,2) ) %in% 
+		sapply(names(parsprovided), function(x) substring(x[[1]],1,2)))])
+	    "%w/o%" <- function(x, y) x[!x %in% y] #--  x without y
+	    unmatchbounds <- (names(boundsprovided) %w/o% matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
+		"twocomponent.x","verbose","force4par")
+	    .paramsestimated <- try( get(".paramsestimated",.GlobalEnv) ,silent = TRUE)
+	    if( class(.paramsestimated) == "try-error" ) .paramsestimated <- TRUE
+	    if(length(unmatchbounds) > 0 & .paramsestimated == TRUE ) {
+	    print("WARNING: In pn.options:  Some parameters specified are missing min/max bounds. Running modpar to populate these bounds.")
+	    print("Note: this will also populate any parameters appropriate to the specified modno that are also missing")
+       	    parseval("substparams <- modpar(xy$x, xy$y, first.y = pnmodelparams$first.y, x.at.first.y = pnmodelparams$x.at.first.y,
+    		last.y = pnmodelparams$last.y,
+    		x.at.last.y = pnmodelparams$x.at.last.y, twocomponent.x = pnmodelparams$twocomponent.x, verbose = pnmodelparams$verbose,
+    		force4par = pnmodelparams$force4par, pn.options =\"", as.character(optvarnm),"\")")
+    	options(warn=-1)
+    	pnmodelparams[which(names(pnmodelparams) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparams))]
+    	pnmodelparamsbounds[which(names(pnmodelparamsbounds) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparamsbounds))]
+   	options(warn=0)		  				     
+  								}  
+    valexp <- sapply( c(unlist(pnmodelparams),unlist(pnmodelparamsbounds), 
+        	unlist( optvar[names(optvar) %w/o% c(names(pnmodelparamsbounds),names(pnmodelparams)) ]) ), function(x) list(x))
+    names( valexp[1:31] ) <- names( c(pnmodelparams,pnmodelparamsbounds) )
+    valexp[1:31] <- as.numeric( valexp[1:31] )
+    valexp[13:15] <- as.logical( valexp[13:15] )
+    assign(optvarnm, valexp, .GlobalEnv) 
     modno <- mCall[["modno"]]
+    if( !is.numeric(modno)) modno <- get(as.character(modno), envir = .GlobalEnv )
     invars <- mCall
-    modelparams <- NA
-    try(modelparams <- get("pnmodelparams", envir = .GlobalEnv), 
-        silent = TRUE)
+    modelparams <- valexp[1:15]
     if (is.na(modelparams[1]) == TRUE) {
         if (modno != 18 & modno != 19) {
             stop("ERROR: global parameters empty or Asym missing: run function modpar before using selfStart functions: see ?modpar")
         }
     }
-    if(!is.na(modelparams$twocomponent_age) & modelparams$force4par == TRUE) 
-    	stop("Cannot force a two component Richards model to have a single component.\nSet force4par to FALSE")
+    if(!is.na(modelparams$twocomponent.x) & modelparams$force4par == TRUE) 
+    	stop("Cannot force a two component Richards model to have a single component.Set force4par to FALSE")
     if(modelparams$force4par == TRUE) {
     if("RAsym" %in% names(invars)) stop("force4par is TRUE, therefore use models without RAsym, Rk, Ri or RM")
     if("Rk" %in% names(invars)) stop("force4par is TRUE, therefore use models without RAsym, Rk, Ri or RM")
@@ -25,13 +80,17 @@ function(mCall, LHS, data, modno) {
     if (!"K" %in% names(invars) & modno != 17) stop(paste("Parameter K required for modno = ", modno, " but is absent from user-provided call", sep = ""))
     if (modno <= 19) {
     	if (!"M" %in% names(invars)) stop(paste("Parameter M required for modno = ", modno, " but is absent from user-provided call", sep = ""))
+    	if (.paramsestimated != FALSE & !"M" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+    		stop(paste("Parameter M required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }
     if (modno != 2 & modno != 22 & modno != 10 & modno != 30 & 
         modno != 11 & modno != 31 & modno != 12 & modno != 32 & 
         modno != 19 & modno != 13 & modno != 33 & modno != 14 & 
         modno != 34 & modno != 15 & modno != 35 & modno != 16 & 
-        modno != 36 & modno != 20 & modno != 32) {
+        modno != 36 & modno != 20 & modno != 32) {        
         if (!"RM" %in% names(invars)) stop(paste("Parameter RM required for modno = ", modno, " but is absent from user-provided call", sep = ""))
+   	if (.paramsestimated != FALSE & !"RM" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+    		stop(paste("Parameter RM required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }
     if (modno != 3 & modno != 23 & modno != 5 & modno != 25 & 
         modno != 7 & modno != 27 & modno != 9 & modno != 29 & 
@@ -39,6 +98,8 @@ function(mCall, LHS, data, modno) {
         modno != 19 & modno != 14 & modno != 34 & modno != 16 & 
         modno != 36 & modno != 20 & modno != 32) {
         if (!"RAsym" %in% names(invars)) stop(paste("Parameter RAsym required for modno = ", modno, " but is absent from user-provided call", sep = ""))
+   	if (.paramsestimated != FALSE & !"RAsym" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+    		stop(paste("Parameter RAsym required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }
     if (modno != 3 & modno != 23 & modno != 4 & modno != 24 & 
         modno != 5 & modno != 25 & modno != 6 & modno != 26 & 
@@ -46,6 +107,8 @@ function(mCall, LHS, data, modno) {
         modno != 12 & modno != 32 & modno != 19 & modno != 13 & 
         modno != 33 & modno != 20 & modno != 32) {
         if (!"Rk" %in% names(invars)) stop(paste("Parameter Rk required for modno = ", modno, " but is absent from user-provided call", sep = ""))
+	if (.paramsestimated != FALSE & !"Rk" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+    		stop(paste("Parameter Rk required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }
     if (modno != 4 & modno != 24 & modno != 5 & modno != 25 & 
         modno != 8 & modno != 28 & modno != 9 & modno != 29 & 
@@ -53,18 +116,20 @@ function(mCall, LHS, data, modno) {
         modno != 19 & modno != 15 & modno != 35 & modno != 16 & 
         modno != 36 & modno != 20 & modno != 32) {
         if (!"Ri" %in% names(invars)) stop(paste("Parameter Ri required for modno = ", modno, " but is absent from user-provided call", sep = ""))
+	if (.paramsestimated != FALSE & !"Ri" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+    		stop(paste("Parameter Ri required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }    
     }
-    if (is.na(modelparams$first_y) == FALSE) {
-        if (is.na(modelparams$x_at_first_y))
-        	modelparams$x_at_first_y <- 0
-        xy <- rbind(xy, c(modelparams$x_at_first_y, modelparams$first_y))
+    if (is.na(modelparams$first.y) == FALSE) {
+        if (is.na(modelparams$x.at.first.y))
+        	modelparams$x.at.first.y <- 0
+        xy <- rbind(xy, c(modelparams$x.at.first.y, modelparams$first.y))
         xy <- xy[order(xy$x), ]
     }
-    if (is.na(modelparams$last_y) == FALSE) {
-        if (is.na(modelparams$x_at_last_y)) 
-            stop("x_at_last_y must be specified if last_y is not NA")
-        xy <- rbind(xy, c(modelparams$x_at_last_y, modelparams$last_y))
+    if (is.na(modelparams$last.y) == FALSE) {
+        if (is.na(modelparams$x.at.last.y)) 
+            stop("x.at.last.y must be specified if last.y is not NA")
+        xy <- rbind(xy, c(modelparams$x.at.last.y, modelparams$last.y))
     }
     sub <- subset(xy, xy$y == max(xy$y))
     tAsym <- mean(sub$x)
@@ -93,8 +158,7 @@ function(mCall, LHS, data, modno) {
         pnmodelparams$M * exp(-K * (x - Infl)))^(1/pnmodelparams$M))
     richards173 <- function(x, Asym, Infl, M) Asym/Re(as.complex(1 + 
         exp(Infl - x)/M))
-    try(modelparamsbounds <- get("pnmodelparamsbounds", envir = .GlobalEnv), 
-        silent = TRUE)
+    modelparamsbounds <- pnmodelparamsbounds
     if (is.na(modelparamsbounds[1]) == TRUE) {
         if (modno != 18 & modno != 19) {
             stop("ERROR: fix parameter bounds empty: run function modpar before using selfStart functions: see ?modpar")
@@ -120,7 +184,7 @@ function(mCall, LHS, data, modno) {
         RMmax = modelparamsbounds$RMmax
         RMmin = modelparamsbounds$RMmin
     }
-    if (is.na(modelparams$twocomponent_age) == TRUE | modelparams$twocomponent_age == 
+    if (is.na(modelparams$twocomponent.x) == TRUE | modelparams$twocomponent.x == 
         TRUE) {
         movavg <- rep(NA, nrow(xy))
         windw <- (round(nrow(xy)/30) + 2)
@@ -350,14 +414,19 @@ function(mCall, LHS, data, modno) {
             Intage <- as.numeric(subset(xval, movavg == max(movavg, 
                 na.rm = TRUE))[1])
         Intage <- Intage * signvalmov
-        if (is.na(modelparams$twocomponent_age) == FALSE) {
-            if (modelparams$twocomponent_age == TRUE) {
-                modelparams$twocomponent_age <- Intage
-                assign("pnmodelparams", modelparams, envir = globalenv())
+        if (is.na(modelparams$twocomponent.x) == FALSE) {
+            if (modelparams$twocomponent.x == TRUE) {
+                modelparams$twocomponent.x <- Intage
+                valexp <- sapply( c(unlist(pnmodelparams),unlist(pnmodelparamsbounds), 
+        		unlist( optvar[names(optvar) %w/o% c(names(pnmodelparams),names(pnmodelparamsbounds)) ]) ), function(x) list(x))
+   		names( valexp[1:31] ) <- names( c(pnmodelparams,pnmodelparamsbounds) )
+    		valexp[1:31] <- as.numeric( valexp[1:31] )
+    		valexp[13:15] <- as.logical( valexp[13:15] )
+    		assign(optvarnm, valexp, .GlobalEnv)    		    
             }
         }
     } else {
-        Intage <- modelparams$twocomponent_age
+        Intage <- modelparams$twocomponent.x
     }
     if (is.na(Intage) == TRUE) 
           Intage <- as.numeric(subset(xy$x, xy$y == max(xy$y, 
@@ -366,8 +435,19 @@ function(mCall, LHS, data, modno) {
         Intage <- max(xy$x)
     if (modelparams$force4par == TRUE) {
         xyE <- xy
+        maxIval<- try(max(xyE$x, na.rm = TRUE) - 
+        	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
+        if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE)  
     } else {
         xyE <- subset(xy, xy$x <= Intage)
+        maxIval<- try(max(xyE$x, na.rm = TRUE) - 
+        	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
+        if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE)      
+        xyL <- data.frame(rep(NA, 1))
+	xyL <- subset(xy, xy$x >= Intage)
+        maxRival<- try(max(xyL$x, na.rm = TRUE) - 
+        	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
+  	if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)        
     }
     if (nrow(xyE) < 5) {
         stop("ERROR: too few distinct input values to fit the positive Richards model, aborting")
@@ -592,6 +672,7 @@ function(mCall, LHS, data, modno) {
                 }
                 return(repl)
             }
+            if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05) 
                 Kmin = 1e-05},silent = TRUE)
             if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
@@ -613,7 +694,7 @@ function(mCall, LHS, data, modno) {
                 if (oppar$convergence < 52) {
                   val <- (c(oppar$par))
                 } else {
-                  if (!is.na(modelparams$twocomponent_age)) {
+                  if (!is.na(modelparams$twocomponent.x)) {
                     stop("ERROR: positive optimization failed,aborting")
                   } else {
                     print("Warning: positive optimization failed,using estimated parameters")
@@ -626,7 +707,7 @@ function(mCall, LHS, data, modno) {
                   }
                 }
             } else {
-                if (!is.na(modelparams$twocomponent_age)) {
+                if (!is.na(modelparams$twocomponent.x)) {
                   stop("ERROR: positive optimization failed,aborting")
                 } else {
                   print("Warning: positive optimization failed,using estimated parameters")
@@ -667,6 +748,8 @@ function(mCall, LHS, data, modno) {
                 while (abs(Imin * Kmax) > 700) Imin = Imin * 
                   0.9
             }
+            if( !is.na(Imax) ) {
+            if (Imax > maxIval) Imax <- maxIval - ((maxIval - min(xy$x)) * 0.95)}
             Mmax = Mmax - (abs(Mmax - M) * 0.75)
             Mmin = Mmin + (abs(Mmin - M) * 0.75)
             pars <- 1
@@ -737,7 +820,8 @@ function(mCall, LHS, data, modno) {
                 return(repl)
             }
             if (modno == 18 | modno == 19) {
-                testpar <- get("pnmodelparamsbounds", envir = globalenv())
+                testpar <- get(optvarnm, envir = globalenv())
+                testpar <- testpar[ names(testpar) %in% names(pnmodelparamsbounds)]
                 if (is.na(testpar[1])) {
                   Amax = Asym + (abs(Asym) * 2.5)
                   Amin = Asym - (abs(Asym) * 0.5)
@@ -749,6 +833,10 @@ function(mCall, LHS, data, modno) {
                     0.9
                   while (abs(Imin * Kmax) > 700) Imin = Imin * 
                     0.9
+                  maxIval<- try(max(xyE$x, na.rm = TRUE) - 
+                  	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
+       		  if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE) 
+       		  if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
                   if (abs(M) < 0.1) {
                     Mmax = 0.5
                     Mmin = -0.5
@@ -764,7 +852,30 @@ function(mCall, LHS, data, modno) {
                   Rimin = Imin
                   RMmax = Mmax
                   RMmin = Mmin
+                  names(Amax) <- ("Amax")
+ 		  names(Amin) <- ("Amin")
+                  names(Kmax) <- ("Kmax")
+                  names(Kmin) <- ("Kmin")
+ 		  names(Imin) <- ("Imin")
+                  names(Imax) <- ("Imax")
+                  names(Mmax) <- ("Mmax")
+ 		  names(Mmin) <- ("Mmin")
+                  names(RAmax) <- ("RAmax")
+            	  names(RAmin) <- ("RAmin")
+                  names(Rkmax) <- ("Rkmax")
+  		  names(Rkmin) <- ("Rkmin")
+ 		  names(Rimin) <- ("Rimin")
+                  names(Rimax) <- ("Rimax")
+                  names(RMmax) <- ("RMmax")
+ 		  names(RMmin) <- ("RMmin")
+                  maxRival<- try(max(xyL$x, na.rm = TRUE) - 
+                  	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
+                  if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+		  if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 } else {
+                  names(testpar) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
+       			 "Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
+        		"Rimin", "Rimax", "RMmin", "RMmax")
                   Amax = testpar$Amax
                   Amin = testpar$Amin
                   Kmax = testpar$Kmax
@@ -781,19 +892,27 @@ function(mCall, LHS, data, modno) {
                   Rimin = testpar$Rimin
                   RMmax = testpar$RMmax
                   RMmin = testpar$RMmin
+                  maxIval<- try(max(xyE$x, na.rm = TRUE) - 
+		       (max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
+       		
+                  maxRival<- try(max(xyL$x, na.rm = TRUE) - 
+		      (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
+		  if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+                  if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
+                  if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 }
                 skel <- rep(list(1), 15)
                 exportparams <- c(Asym, K, Infl, M, (Asym * 0.05), 
-                  K, tAsym, M, modelparams$first_y, modelparams$x_at_first_y,
-                  modelparams$last_y, 
-                  modelparams$x_at_last_y, modelparams$twocomponent_age, 
+                  K, tAsym, M, modelparams$first.y, modelparams$x.at.first.y,
+                  modelparams$last.y, 
+                  modelparams$x.at.last.y, modelparams$twocomponent.x, 
                   modelparams$verbose, modelparams$force4par)
                 exportparams <- relist(exportparams, skel)
                 names(exportparams) <- c("Asym", "K", "Infl", 
-                  "M", "RAsym", "Rk", "Ri", "RM", "first_y", "x_at_first_y",
-                  "last_y", "x_at_last_y", "twocomponent_age", 
+                  "M", "RAsym", "Rk", "Ri", "RM", "first.y", "x.at.first.y",
+                  "last.y", "x.at.last.y", "twocomponent.x", 
                   "verbose", "force4par")
-                exportparams$twocomponent_age <- modelparams$twocomponent_age
+                exportparams$twocomponent.x <- modelparams$twocomponent.x
                 exportparams$verbose <- modelparams$verbose
                 exportparams$force4par <- modelparams$force4par
                 skel <- rep(list(1), 16)
@@ -806,10 +925,14 @@ function(mCall, LHS, data, modno) {
                   "Kmin", "Kmax", "Imin", "Imax", "Mmin", "Mmax", 
                   "RAmin", "RAmax", "Rkmin", "Rkmax", "Rimin", 
                   "Rimax", "RMmin", "RMmax")
-                assign("pnmodelparams", exportparams, envir = globalenv()) 
-                assign("pnmodelparamsbounds", exportparamsbounds, 
-                  envir = globalenv())
-            }
+    		valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
+            		unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
+       		names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
+        	valexp[1:31] <- as.numeric( valexp[1:31] )
+        	valexp[13:15] <- as.logical( valexp[13:15] )
+    		assign(optvarnm, valexp, .GlobalEnv) 
+ 	      }
+            if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05 & Kmin > -1e-05) 
                			 Kmin = 1e-05 * sign(Kmin)},silent = TRUE)
 	    if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
@@ -842,8 +965,8 @@ function(mCall, LHS, data, modno) {
                     K, Infl, M))^2)
                   if(is.na(evy1)) evy1 <- Inf
                   if(is.na(evy2)) evy2 <- Inf
-                  if (evy1 > evy2 | !is.na(modelparams$twocomponent_age)) {
-                    if (!is.na(modelparams$twocomponent_age)) 
+                  if (evy1 > evy2 | !is.na(modelparams$twocomponent.x)) {
+                    if (!is.na(modelparams$twocomponent.x)) 
                       savoppE <- oppar
                     xyE <- moddata(xyE, min(xy$x, Intage))
                     try(oppar <- optim(c(Asym, K, Infl, M), func1, 
@@ -852,7 +975,7 @@ function(mCall, LHS, data, modno) {
                         M), Imax, Mmax), control = list(maxit = 2000, 
                         parscale = c(10000, 0.01, 100, 10))), 
                       silent = TRUE)
-                    if (!is.na(modelparams$twocomponent_age)) {
+                    if (!is.na(modelparams$twocomponent.x)) {
                       if (class(oppar)[1] == "try-error") {
                         oppar <- savoppE
                       } else {
@@ -871,7 +994,7 @@ function(mCall, LHS, data, modno) {
                 if (oppar$convergence < 52) {
                   val <- (c(oppar$par))
                 } else {
-                  if (!is.na(modelparams$twocomponent_age)) {
+                  if (!is.na(modelparams$twocomponent.x)) {
                     stop("ERROR: positive optimization failed,aborting")
                   } else {
                     print("Warning: positive optimization failed,using estimated parameters")
@@ -880,7 +1003,7 @@ function(mCall, LHS, data, modno) {
                   }
                 }
             } else {
-                if (!is.na(modelparams$twocomponent_age)) {
+                if (!is.na(modelparams$twocomponent.x)) {
                   stop("ERROR: positive optimization failed,aborting")
                 } else {
                   print("Warning: positive optimization failed,using estimated parameters")
@@ -907,6 +1030,7 @@ function(mCall, LHS, data, modno) {
             Imin = Infl + (abs(Infl) * -1.5)
             while (abs(Imax * Kmax) > 700) Imax = Imax * 0.9
             while (abs(Imin * Kmax) > 700) Imin = Imin * 0.9
+            if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
             if (abs(M) < 0.1) {
                 Mmax = 0.25
                 Mmin = -0.25
@@ -938,7 +1062,9 @@ function(mCall, LHS, data, modno) {
     if (modelparams$force4par == FALSE) {
         xyL <- data.frame(rep(NA, 1))
         xyL <- subset(xy, xy$x >= Intage)
-        if (is.na(modelparams$twocomponent_age) == FALSE) 
+                maxRival<- try(max(xyL$x, na.rm = TRUE) - (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
+  		if(class(maxRival) == "try-error") maxRival = max(xy$x, na.rm=TRUE)
+        if (is.na(modelparams$twocomponent.x) == FALSE) 
             xyL <- subset(xy, xy$x > Intage)
         if (nrow(xyL) < 3 | modno == 12 | modno == 20 | modno == 
             32 | modno == 19 | modno == 17 | modelparams$force4par == TRUE) {
@@ -1056,7 +1182,7 @@ function(mCall, LHS, data, modno) {
             if (modno == 20) {
             }
         } else {
-            if (is.na(modelparams$twocomponent_age) == TRUE) {
+            if (is.na(modelparams$twocomponent.x) == TRUE) {
                 signval <- 1
                 if (max(abs(xy$y)) != max(xy$y)) 
                   signvalmax <- -1
@@ -1095,6 +1221,7 @@ function(mCall, LHS, data, modno) {
                   0.9
                 while (abs(Rimin * Rkmax) > 700) Rimin = Rimin * 
                   0.9
+                if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 if (abs(RM) < 0.1) {
                   RMmax = 0.5
                   RMmin = -0.5
@@ -1111,19 +1238,20 @@ function(mCall, LHS, data, modno) {
                Rimin = Imin
                RMmax = Mmax
                RMmin = Mmin
+               if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                }
                 skel <- rep(list(1), 15)
                 exportparams <- c(Asym, K, Infl, M, RAsym, Rk, 
-                  Ri, RM, modelparams$first_y, modelparams$x_at_first_y, 
-                  modelparams$last_y, 
-                  modelparams$x_at_last_y, modelparams$twocomponent_age, 
+                  Ri, RM, modelparams$first.y, modelparams$x.at.first.y, 
+                  modelparams$last.y, 
+                  modelparams$x.at.last.y, modelparams$twocomponent.x, 
                   modelparams$verbose, modelparams$force4par)
                 exportparams <- relist(exportparams, skel)
                 names(exportparams) <- c("Asym", "K", "Infl", 
-                  "M", "RAsym", "Rk", "Ri", "RM", "first_y", "x_at_first_y",
-                  "last_y", "x_at_last_y", "twocomponent_age", 
+                  "M", "RAsym", "Rk", "Ri", "RM", "first.y", "x.at.first.y",
+                  "last.y", "x.at.last.y", "twocomponent.x", 
                   "verbose", "force4par")
-                exportparams$twocomponent_age <- modelparams$twocomponent_age
+                exportparams$twocomponent.x <- modelparams$twocomponent.x
                 exportparams$verbose <- modelparams$verbose
                 exportparams$force4par <- modelparams$force4par
                 skel <- rep(list(1), 16)
@@ -1136,10 +1264,13 @@ function(mCall, LHS, data, modno) {
                   "Kmin", "Kmax", "Imin", "Imax", "Mmin", "Mmax", 
                   "RAmin", "RAmax", "Rkmin", "Rkmax", "Rimin", 
                   "Rimax", "RMmin", "RMmax")
-                assign("pnmodelparams", exportparams, envir = globalenv())
-                assign("pnmodelparamsbounds", exportparamsbounds, 
-                  envir = globalenv())
-                modelparams <- exportparams
+     		valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
+             		unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
+        		names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
+         	valexp[1:31] <- as.numeric( valexp[1:31] )
+         	valexp[13:15] <- as.logical( valexp[13:15] )
+    		assign(optvarnm, valexp, .GlobalEnv) 
+		modelparams <- exportparams
                 modelparamsbounds <- exportparamsbounds
                 assign(".tmpposnegfile", 0, envir = .GlobalEnv)
             }
@@ -1254,7 +1385,8 @@ function(mCall, LHS, data, modno) {
             }
             func2 <- function(val1) {
                 tmpposnegfile <- get(".tmpposnegfile", envir = .GlobalEnv)
-                pnmodelparams <- get("pnmodelparams", envir = .GlobalEnv)
+   		parload <- get(optvarnm, envir = globalenv())
+                pnmodelparams <- parload[ names(parload) %in% names(pnmodelparams)]
                 value1 <- data.frame(RAsym = pnmodelparams$RAsym, 
                   Rk = pnmodelparams$Rk, Ri = pnmodelparams$Ri, 
                   RM = pnmodelparams$RM)
@@ -1305,6 +1437,21 @@ function(mCall, LHS, data, modno) {
                 options(warn = 0)
                 return(evl)
             }
+            if( is.na(inputval[1])) {
+            	inputval<-val1
+            	} else {
+            	chinputval <- data.frame(t(inputval))
+            	chinputmax <- data.frame(t(inputmax))
+            	names(chinputval) <- names(inputval)
+            	chmx<-paste(substr(names(inputval),1,2),"max","")
+            	chmx<-sub(" ","",chmx)
+            	chmx<-sub(" ","",chmx)
+            	names(chinputmax) <- chmx
+            	if (is.null(chinputval$Ri) == FALSE) {
+            		if (chinputval$Ri >= chinputmax$Rimax) 
+            			chinputval$Ri <- chinputmax$Rimax - ((chinputmax$Rimax - min(xy$x, na.rm=TRUE)) * 0.95)
+           	 }
+            }
             oppar = 0
             is.na(oppar) <- TRUE
             savminx <- min(xyL$x)
@@ -1337,14 +1484,14 @@ function(mCall, LHS, data, modno) {
                     Rk, Ri, RM))^2)
                   if(is.na(evy1L)) evy1L <- Inf
                   if(is.na(evy2L)) evy2L <- Inf
-                  if (evy1L > evy2L | !is.na(modelparams$twocomponent_age)) {
-                    if (!is.na(modelparams$twocomponent_age)) 
+                  if (evy1L > evy2L | !is.na(modelparams$twocomponent.x)) {
+                    if (!is.na(modelparams$twocomponent.x)) 
                       savoppL <- oppar
                     xyL <- moddata(xyL, min(xy$x, Intage))
                     try(oppar <- optim(inputval, func2, method = "L-BFGS-B", 
                       lower = inputmin, upper = inputmax, control = list(maxit = 2000)), 
                       silent = TRUE)
-                    if (!is.na(modelparams$twocomponent_age)) {
+                    if (!is.na(modelparams$twocomponent.x)) {
                       if (class(oppar)[1] == "try-error") {
                         oppar <- savoppL
                       } else {
@@ -1397,7 +1544,8 @@ function(mCall, LHS, data, modno) {
                 val1 <- val1[!is.na(val1)]
                 val1 <- data.frame(t(val1))
             }
-        pnmodelparamsbounds <- get("pnmodelparamsbounds", envir = globalenv())
+		parload <- get(optvarnm, envir = globalenv())
+                pnmodelparamsbounds <- parload[ names(parload) %in% names(pnmodelparamsbounds)]
         }
         if (modno == 12 | modno == 20 | modno == 32 | modno == 
             19 | modelparams$force4par == TRUE) {
@@ -1485,7 +1633,7 @@ function(mCall, LHS, data, modno) {
                   posmax <- c(Amax, Kmax, Imax, Mmax)
                 }
             }
-            if (is.na(modelparams$twocomponent_age) == TRUE) {
+            if (is.na(modelparams$twocomponent.x) == TRUE) {
                 finalpars <- 0
                 is.na(finalpars) <- TRUE
                 richardsR <- function(Rparams) {
@@ -1800,6 +1948,21 @@ function(mCall, LHS, data, modno) {
                   names(upbnds) <- nmbndsav
                   oppar1 <- data.frame(52)
                   names(oppar1) <- c("convergence")
+         	  if( is.na(inputval[1])) {
+          	  	inputval<-val1
+          	  	} else {
+          	  	chinputval <- data.frame(t(inputval))
+          	  	chinputmax <- data.frame(t(inputmax))
+			names(chinputval) <- names(inputval)
+            		chmx<-paste(substr(names(inputval),1,2),"max","")
+            		chmx<-sub(" ","",chmx)
+            		chmx<-sub(" ","",chmx)
+            		names(chinputmax) <- chmx
+            	  	if (is.null(chinputval$Ri) == FALSE) {
+          	  		if (chinputval$Ri >= chinputmax$Rimax) 
+          	  			chinputval$Ri <- chinputmax$Rimax - ((chinputmax$Rimax - min(xy$x, na.rm=TRUE)) * 0.95)
+          	 	 }
+          	  }
                   if (repoptm == 1) {
                     try(oppar1 <- (optim(value, richardsR, method = "L-BFGS-B", 
                       lower = dnbnds, upper = upbnds, control = list(maxit = 2000))), 
@@ -1949,6 +2112,7 @@ function(mCall, LHS, data, modno) {
         Imin = Infl + (abs(Infl) * -2.5)
         while (abs(Imax * Kmax) > 700) Imax = Imax * 0.9
         while (abs(Imin * Kmax) > 700) Imin = Imin * 0.9
+        if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
         if (abs(M) < 0.1) {
             Mmax = 0.5
             Mmin = -0.5
@@ -1969,6 +2133,8 @@ function(mCall, LHS, data, modno) {
             Rimin = Imin
             RMmax = Mmax
             RMmin = Mmin
+            if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
+            if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
         } else {
             RAsym <- NA
             Rk <- NA
@@ -1985,15 +2151,15 @@ function(mCall, LHS, data, modno) {
         }
         skel <- rep(list(1), 15)
         exportparams <- c(Asym, K, Infl, M, RAsym, Rk, Ri, RM, 
-            modelparams$first_y, modelparams$x_at_first_y, 
-            modelparams$last_y, modelparams$x_at_last_y, 
-            modelparams$twocomponent_age, modelparams$verbose, 
+            modelparams$first.y, modelparams$x.at.first.y, 
+            modelparams$last.y, modelparams$x.at.last.y, 
+            modelparams$twocomponent.x, modelparams$verbose, 
             modelparams$force4par)
         exportparams <- relist(exportparams, skel)
         names(exportparams) <- c("Asym", "K", "Infl", "M", "RAsym", 
-            "Rk", "Ri", "RM", "first_y", "x_at_first_y", "last_y", "x_at_last_y", 
-            "twocomponent_age", "verbose", "force4par")
-        exportparams$twocomponent_age <- modelparams$twocomponent_age
+            "Rk", "Ri", "RM", "first.y", "x.at.first.y", "last.y", "x.at.last.y", 
+            "twocomponent.x", "verbose", "force4par")
+        exportparams$twocomponent.x <- modelparams$twocomponent.x
         exportparams$verbose <- modelparams$verbose
         exportparams$force4par <- modelparams$force4par
         skel <- rep(list(1), 16)
@@ -2005,8 +2171,12 @@ function(mCall, LHS, data, modno) {
             "Kmax", "Imin", "Imax", "Mmin", "Mmax", "RAmin", 
             "RAmax", "Rkmin", "Rkmax", "Rimin", "Rimax", "RMmin", 
             "RMmax")
-        assign("pnmodelparams", exportparams, envir = globalenv())
-        assign("pnmodelparamsbounds", exportparamsbounds, envir = globalenv())
+     	valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
+             	unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
+        	names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
+        valexp[1:31] <- as.numeric( valexp[1:31] )
+        valexp[13:15] <- as.logical( valexp[13:15] )
+    	assign(optvarnm, valexp, .GlobalEnv) 
     }
     if (modelparams$verbose == TRUE) {
         print("Values from SSposnegRichards:")

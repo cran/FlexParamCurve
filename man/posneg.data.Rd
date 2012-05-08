@@ -1,13 +1,13 @@
-\name{posneg_data}
+\name{posneg.data}
 \docType{data}
-\alias{posneg_data}
+\alias{posneg.data}
 \title{Simulated growth of black-browed albatrosses}
 \description{
-  The \code{posneg_data} data frame has 1300 rows and 3 columns of records of
+  The \code{posneg.data} data frame has 1300 rows and 3 columns of records of
   the simulated masses for black-browed albatross chicks between 0 and 166 
   days of age.
 }
-\usage{data(posneg_data)}
+\usage{data(posneg.data)}
 \format{
   This object of class \code{c("nfnGroupedData", "nfGroupedData",
     "groupedData", "data.frame")} containing the following columns:
@@ -53,16 +53,18 @@
 }
 \examples{
 require(stats); require(graphics)
-data(posneg_data)
-modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
-plot(mass ~ age, data = posneg_data, subset = id == "1",
+data(posneg.data)
+\donttest{
+modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions") #create list for fixed parameters
+plot(mass ~ age, data = posneg.data, subset = id == "1",
      xlab = "Chick age (day)", las = 1,
      ylab = "Chick mass (g)",
-     main = "posneg_data data and fitted curve (Chick #1 only)")
+     main = "posneg.data data and fitted curve (Chick #1 only)")
 fm1 <- nls(mass ~ SSposnegRichards(age,Asym=Asym,K=K,Infl=Infl, RAsym=RAsym,
-           Rk=Rk,Ri=Ri,modno=22),
-           data = posneg_data, subset = id == "1")
+           Rk=Rk,Ri=Ri,modno=22, pn.options= "myoptions"),
+           data = posneg.data, subset = id == "1")
 age <- seq(0, 166, length.out = 101)
 lines(age, predict(fm1, list(age = age)))
+}
 }
 \keyword{datasets}

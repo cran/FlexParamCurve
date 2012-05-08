@@ -10,7 +10,8 @@
 posnegRichardsInit(mCall,
 LHS,
 data,
-modno)
+modno,
+pn.options)
 }
 \arguments{
   \item{mCall}{ Call from \code{\link{SSposnegRichards}}
@@ -22,6 +23,10 @@ modno)
   \item{modno}{ Identification number of the model to be fitted 
      specified from \code{\link{SSposnegRichards}}
 }
+  \item{pn.options}{character string specifying name of 
+\code{\link{list}} object populated with starting 
+parameter estimates, fitting options and bounds}
+
 }
 
 \seealso{\code{\link{SSposnegRichards}}}

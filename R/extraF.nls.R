@@ -49,19 +49,19 @@ structure(function # Compare Two \eqn{nls} Models Using Extra Sum-of-Squares F-T
 ## Springer-Verlag, New York.
 ##seealso<< \code{\link{extraF}}
 ##  \code{\link{nls}}
-##  \code{\link{pn_modselect_step}}
-##  \code{\link{pn_mod_compare}}
+##  \code{\link{pn.modselect.step}}
+##  \code{\link{pn.mod.compare}}
 }
 , ex = function(){
 #fit and compare two nested nls models (7 vs 8 parameter models)
-   data(posneg_data)
-   modpar(posneg_data$age, posneg_data$mass) #create pnmodelparams for fixed parameters
+   data(posneg.data)
+   modpar(posneg.data$age, posneg.data$mass) #create pnmodelparams for fixed parameters
    richardsR1.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
    Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1)
-                        , data = posneg_data)
+                        , data = posneg.data)
    richardsR2.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
    Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = 1, modno = 2)
-                        , data = posneg_data)
+                        , data = posneg.data)
    extraF.nls(richardsR2.nls, richardsR1.nls)
 }
 )

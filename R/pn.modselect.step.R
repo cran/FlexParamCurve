@@ -1,4 +1,4 @@
-pn_modselect_step <-
+pn.modselect.step <-
 structure(function # Backwards Stepwise Selection of Positive-Negative Richards \eqn{nlslist} Models
                                (x,
                                 ### a numeric vector of the primary predictor
@@ -12,8 +12,12 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
                                 existing = FALSE,
                                 ### optional logical value specifying whether some of the relevant models
                                 ### have already been fitted
-                                penaliz = "1/sqrt(n)"
+                                penaliz = "1/sqrt(n)",
                                 ### optional character value to determine how models are ranked (see Details)
+          			pn.options
+          	                ### required character value for name of list object populated with starting 
+          	                ### parameter estimates, fitting 
+          	                ### options and bounds or destination for modpar to write a new list (see Details)            
                                 ) {
 ##decription<< This function performs backawards stepwise model selection for \code{\link{nlsList}}
 ## models fitted using
@@ -40,7 +44,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	## (4-parameters for variable M, 3-parameters for fixed M).
 	##
 	## Fitting these \code{\link{nlsList}} models can be time-consuming (2-4 hours using the dataset
-	## \code{\link{posneg_data}} that encompasses 100 individuals) and if several of the relevant
+	## \code{\link{posneg.data}} that encompasses 100 individuals) and if several of the relevant
 	## models are already fitted the option existing=TRUE can be used to avoid refitting models that
 	## already exist globally (note that a model object in which no grouping levels were successfully
 	## parameterized will be refitted, as will objects that are not of class nlsList).
@@ -59,17 +63,17 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	## standard error is multiplied by). This argument must be a character value
 	## that contains the character n (sample size) and must be a valid right hand side (RHS) of a formula:
 	## e.g. 1*(n), (n)^2. It cannot contain more than one n but could be a custom function, e.g. FUN(n).
-	    testit <- try(library(nlme), silent = TRUE)
-	    if (class(testit)[1] == "try-error")
-		stop("please load library: nlme")
+	    library(nlme)
+	    pnoptm=NULL
+	    pnoptnm <- as.character(pn.options)
 	    checkpen <- try(unlist(strsplit(penaliz, "(n)")), silent = TRUE)
 	    if (length(checkpen) != 2 | class(checkpen)[1] == "try-error") {
-		stop("penaliz parameter is ill defined: see ?pn_mod_compare")
+		stop("penaliz parameter is ill defined: see ?pn.mod.compare")
 	    } else {
 		checkpen <- try(eval(parse(text = sprintf("%s", paste(checkpen[1],
 		    "1", checkpen[2], sep = "")))))
 		if (class(checkpen)[1] == "try-error")
-		    stop("penaliz parameter is ill defined: see ?pn_mod_compare")
+		    stop("penaliz parameter is ill defined: see ?pn.mod.compare")
 	    }
 	    datamerg <- data.frame(x, y, grp)
 	    userdata <- groupedData(y ~ x | grp, outer = ~grp, data = datamerg)
@@ -77,18 +81,20 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    testpar <- 1
 	    is.na(testbounds) <- TRUE
 	    is.na(testpar) <- TRUE
-	    testbounds <- try(get("pnmodelparamsbounds", envir = .GlobalEnv),
+	    testbounds <- try(get(pnoptm, envir = .GlobalEnv)[16:32],
 		silent = TRUE)
-	    testpar <- try(get("pnmodelparams", envir = .GlobalEnv),
+	    testpar <- try(get(pnoptm, envir = .GlobalEnv)[1:15],
 		silent = TRUE)
 	    if (class(testbounds)[1] == "try-error" | class(testpar)[1] ==
 		"try-error" | is.na(testbounds[1]) == TRUE | is.na(testpar[1]) ==
 		TRUE)
-		try(modpar(datamerg[1], datamerg[2]), silent = FALSE)
+		try(assign(pnoptnm, modpar(datamerg[,1], datamerg[,2], pn.options = ".modcmptemp", verbose=FALSE), .GlobalEnv)
+        	, silent = FALSE)
 	    extraF <- try(get("extraF", envir = .GlobalEnv), silent = TRUE)
 	    if (class(extraF)[1] == "try-error") {
-		stop("cannot find function: extraF")
+		stop("cannot find function: extraF - please reload FlexParamCurve")
 	    }
+	    assign(".modstptemp",get(pnoptnm, envir = .GlobalEnv), .GlobalEnv)
 	    mostreducedmod<-1
 	    print("checking fit of positive section of the curve for variable M*************************************")
 	    richardsR12.lis <- try(get("richardsR12.lis", envir = .GlobalEnv),
@@ -97,10 +103,10 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		FALSE)
 		richardsR12.lis <- try(nlsList(y ~ SSposnegRichards(x,
 		    Asym = Asym, K = K, Infl = Infl, M = M, RAsym = 1,
-		    Rk = 1, Ri = 1, RM = 1, modno = 12), data = userdata),
+		    Rk = 1, Ri = 1, RM = 1, modno = 12, pn.options = .modstptemp), data = userdata),
 		    silent = TRUE)
 	    print("checking fit of positive section of the curve for fixed M*************************************")
-	    pnmodelparams <- get("pnmodelparams", envir = .GlobalEnv)
+	    pnmodelparams <- get(pnoptnm, envir = .GlobalEnv)[1:15]
 	    change.pnparameters <- try(get("change.pnparameters", envir = .GlobalEnv),
 		silent = TRUE)
 	    dummy <- try(change.pnparameters(M = (fixef(richardsR12.lis)[4])),
@@ -111,7 +117,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		FALSE)
 		richardsR20.lis <- try(nlsList(y ~ SSposnegRichards(x,
 		    Asym = Asym, K = K, Infl = Infl, M = 1, RAsym = 1,
-		    Rk = 1, Ri = 1, RM = 1, modno = 20), data = userdata),
+		    Rk = 1, Ri = 1, RM = 1, modno = 20, pn.options = .modstptemp), data = userdata),
 		    silent = TRUE)
 	    if ((class(richardsR20.lis)[1]) == "try-error" | class(richardsR20.lis)[[1]] != "nlsList" ) {
 		print("3 parameter positive richards model failed*************************************")
@@ -282,7 +288,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			submod <- as.character(substitute(model4))
 		    }
 		    submod <- substr(submod, 10, 11)
-		    assign("tempparam_select", submod, envir = globalenv())
+		    assign("tempparam.select", submod, envir = globalenv())
 		    return(model)
 		}
 	    }
@@ -316,7 +322,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			return(1)
 		    } else {
 			modnm <- sprintf("%s", get("tempmodnm", envir = .GlobalEnv))
-			assign("tempparam_select", substr(modnm, 10,
+			assign("tempparam.select", substr(modnm, 10,
 			  11), envir = .GlobalEnv)
 			assign(modnm, eval(modname), envir = .GlobalEnv)
 			return(eval(modname))
@@ -363,7 +369,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    cnt <- 1
 	    step1submod <- FALSE
 	    step5submod <- FALSE
-	    assign("tempparam_select", "NONE", envir = globalenv())
+	    assign("tempparam.select", "NONE", envir = globalenv())
 	    while (cnt < 6) {
 		if (modelsig > 0.05) {
 		    if (cnt == 1) {
@@ -376,7 +382,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR1.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = RAsym,
-			      Rk = Rk, Ri = Ri, RM = RM, modno = 1),
+			      Rk = Rk, Ri = Ri, RM = RM, modno = 1, pn.options = .modstptemp),
 			      data = userdata)
 			  }, silent = TRUE)
 			currentmodel <- rnassign()
@@ -393,7 +399,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR2.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = RAsym,
-			      Rk = Rk, Ri = Ri, RM = 1, modno = 2), data = userdata)
+			      Rk = Rk, Ri = Ri, RM = 1, modno = 2, pn.options = .modstptemp), data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR7.lis  --")
@@ -404,7 +410,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR7.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = 1, Rk = Rk,
-			      Ri = Ri, RM = RM, modno = 7), data = userdata)
+			      Ri = Ri, RM = RM, modno = 7, pn.options = .modstptemp), data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR6.lis  --")
@@ -415,7 +421,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR6.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = RAsym,
-			      Rk = 1, Ri = Ri, RM = RM, modno = 6), data = userdata)
+			      Rk = 1, Ri = Ri, RM = RM, modno = 6, pn.options = .modstptemp), data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR8.lis  --")
@@ -426,7 +432,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR8.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = RAsym,
-			      Rk = Rk, Ri = 1, RM = RM, modno = 8), data = userdata)
+			      Rk = Rk, Ri = 1, RM = RM, modno = 8, pn.options = .modstptemp), data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
 			submodel <- rankmod(richardsR2.lis, richardsR7.lis,
@@ -436,7 +442,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    }
 		    if (cnt == 3) {
 			print("Step 3 of a maximum of 6*********************************************************************")
-			currentmodID3 <- get("tempparam_select", envir = .GlobalEnv)
+			currentmodID3 <- get("tempparam.select", envir = .GlobalEnv)
 			if (currentmodID3 == "NONE")
 			  currentmodID3 = "2."
 			if (currentmodID3 == "2.") {
@@ -448,7 +454,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR14.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = Ri, RM = 1, modno = 14),
+				Rk = Rk, Ri = Ri, RM = 1, modno = 14, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -460,7 +466,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR13.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = Ri, RM = 1, modno = 13),
+				Rk = 1, Ri = Ri, RM = 1, modno = 13, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -472,7 +478,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR15.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = Rk, Ri = 1, RM = 1, modno = 15),
+				Rk = Rk, Ri = 1, RM = 1, modno = 15, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -492,7 +498,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR14.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = Ri, RM = 1, modno = 14),
+				Rk = Rk, Ri = Ri, RM = 1, modno = 14, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -504,7 +510,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR3.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = RM, modno = 3),
+				Rk = 1, Ri = Ri, RM = RM, modno = 3, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -516,7 +522,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR9.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = RM, modno = 9),
+				Rk = Rk, Ri = 1, RM = RM, modno = 9, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -536,7 +542,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR13.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = Ri, RM = 1, modno = 13),
+				Rk = 1, Ri = Ri, RM = 1, modno = 13, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -548,7 +554,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR3.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = RM, modno = 3),
+				Rk = 1, Ri = Ri, RM = RM, modno = 3, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -560,7 +566,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR4.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = RM, modno = 4),
+				Rk = 1, Ri = 1, RM = RM, modno = 4, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -580,7 +586,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR15.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = Rk, Ri = 1, RM = 1, modno = 15),
+				Rk = Rk, Ri = 1, RM = 1, modno = 15, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -592,7 +598,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR9.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = RM, modno = 9),
+				Rk = Rk, Ri = 1, RM = RM, modno = 9, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -604,7 +610,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR4.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = RM, modno = 4),
+				Rk = 1, Ri = 1, RM = RM, modno = 4, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -616,7 +622,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    }
 		    if (cnt == 4) {
 			print("Step 4 of a maximum of 6*********************************************************************")
-			currentmodID2 <- get("tempparam_select", envir = .GlobalEnv)
+			currentmodID2 <- get("tempparam.select", envir = .GlobalEnv)
 			if (currentmodID3 == "NONE" & currentmodID2 ==
 			  "NONE") {
 			  currentmodID3 = "2."
@@ -632,7 +638,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR10.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -644,7 +650,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR16.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -667,7 +673,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR10.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -679,7 +685,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR11.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -702,7 +708,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR16.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -714,7 +720,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR11.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -737,7 +743,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR10.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -749,7 +755,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR16.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -772,7 +778,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR10.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -784,7 +790,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR5.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -807,7 +813,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR16.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -819,7 +825,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR5.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -842,7 +848,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR10.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -854,7 +860,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR11.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -877,7 +883,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR10.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -889,7 +895,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR5.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -912,7 +918,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR11.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -924,7 +930,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR5.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -947,7 +953,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR16.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -959,7 +965,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR11.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -982,7 +988,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR16.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -994,7 +1000,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR5.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1017,7 +1023,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR11.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1029,7 +1035,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR5.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1040,7 +1046,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    }
 		    if (cnt == 5) {
 			print("Step 5 of 6*********************************************************************")
-			currentmodID1 <- get("tempparam_select", envir = .GlobalEnv)
+			currentmodID1 <- get("tempparam.select", envir = .GlobalEnv)
 			print("--ASSESSING MODEL: richardsR12.lis  --")
 			richardsR12.lis <- rncheckfirst(richardsR12.lis,
 			  existing = existing)
@@ -1049,7 +1055,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR12.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = 1, Rk = 1,
-			      Ri = 1, RM = 1, modno = 12), data = userdata)
+			      Ri = 1, RM = 1, modno = 12, pn.options = .modstptemp), data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
 			step5stat <- extraF(richardsR12.lis, currentmodel)
@@ -1070,7 +1076,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR21.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = RAsym,
-			      Rk = Rk, Ri = Ri, RM = RM, modno = 21),
+			      Rk = Rk, Ri = Ri, RM = RM, modno = 21, pn.options = .modstptemp),
 			      data = userdata)
 			  }, silent = TRUE)
 			currentmodel <- rnassign()
@@ -1087,7 +1093,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR22.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = RAsym,
-			      Rk = Rk, Ri = Ri, RM = 1, modno = 22),
+			      Rk = Rk, Ri = Ri, RM = 1, modno = 22, pn.options = .modstptemp),
 			      data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
@@ -1099,7 +1105,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR27.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = 1, Rk = Rk,
-			      Ri = Ri, RM = RM, modno = 27), data = userdata)
+			      Ri = Ri, RM = RM, modno = 27, pn.options = .modstptemp), data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR26.lis  --")
@@ -1110,7 +1116,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR26.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = RAsym,
-			      Rk = 1, Ri = Ri, RM = RM, modno = 26),
+			      Rk = 1, Ri = Ri, RM = RM, modno = 26, pn.options = .modstptemp),
 			      data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
@@ -1122,7 +1128,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR28.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = RAsym,
-			      Rk = Rk, Ri = 1, RM = RM, modno = 28),
+			      Rk = Rk, Ri = 1, RM = RM, modno = 28, pn.options = .modstptemp),
 			      data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
@@ -1133,7 +1139,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    }
 		    if (cnt == 3) {
 			print("Step 3 of a maximum of 6*********************************************************************")
-			currentmodID3 <- get("tempparam_select", envir = .GlobalEnv)
+			currentmodID3 <- get("tempparam.select", envir = .GlobalEnv)
 			if (currentmodID3 == "NONE")
 			  currentmodID3 = "22"
 			if (currentmodID3 == "22") {
@@ -1145,7 +1151,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR34.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = Ri, RM = 1, modno = 34),
+				Rk = Rk, Ri = Ri, RM = 1, modno = 34, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1157,7 +1163,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR33.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = Ri, RM = 1, modno = 33),
+				Rk = 1, Ri = Ri, RM = 1, modno = 33, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1169,7 +1175,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR35.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = Rk, Ri = 1, RM = 1, modno = 35),
+				Rk = Rk, Ri = 1, RM = 1, modno = 35, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1189,7 +1195,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR34.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = Ri, RM = 1, modno = 34),
+				Rk = Rk, Ri = Ri, RM = 1, modno = 34, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1201,7 +1207,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR23.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = RM, modno = 23),
+				Rk = 1, Ri = Ri, RM = RM, modno = 23, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1213,7 +1219,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR29.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = RM, modno = 29),
+				Rk = Rk, Ri = 1, RM = RM, modno = 29, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1233,7 +1239,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR33.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = Ri, RM = 1, modno = 33),
+				Rk = 1, Ri = Ri, RM = 1, modno = 33, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1245,7 +1251,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR23.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = RM, modno = 23),
+				Rk = 1, Ri = Ri, RM = RM, modno = 23, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1257,7 +1263,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR24.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = RM, modno = 24),
+				Rk = 1, Ri = 1, RM = RM, modno = 24, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1277,7 +1283,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR35.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = Rk, Ri = 1, RM = 1, modno = 35),
+				Rk = Rk, Ri = 1, RM = 1, modno = 35, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1289,7 +1295,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR29.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = RM, modno = 29),
+				Rk = Rk, Ri = 1, RM = RM, modno = 29, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1301,7 +1307,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR24.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = RM, modno = 24),
+				Rk = 1, Ri = 1, RM = RM, modno = 24, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1313,7 +1319,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    }
 		    if (cnt == 4) {
 			print("Step 4 of a maximum of 6*********************************************************************")
-			currentmodID2 <- get("tempparam_select", envir = .GlobalEnv)
+			currentmodID2 <- get("tempparam.select", envir = .GlobalEnv)
 			if (currentmodID3 == "NONE" & currentmodID2 ==
 			  "NONE") {
 			  currentmodID3 = "22"
@@ -1329,7 +1335,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR30.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1341,7 +1347,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR36.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1364,7 +1370,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR30.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1376,7 +1382,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR31.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1399,7 +1405,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR36.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1411,7 +1417,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR31.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1434,7 +1440,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR30.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1446,7 +1452,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR36.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1469,7 +1475,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR30.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1481,7 +1487,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR25.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1504,7 +1510,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR36.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1516,7 +1522,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR25.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1539,7 +1545,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR30.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1551,7 +1557,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR31.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1574,7 +1580,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR30.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1586,7 +1592,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR25.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1609,7 +1615,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR31.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1621,7 +1627,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR25.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1644,7 +1650,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR36.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1656,7 +1662,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR31.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1679,7 +1685,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR36.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1691,7 +1697,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR25.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1714,7 +1720,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR31.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1726,7 +1732,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    richardsR25.lis <- try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
 				data = userdata)
 			    }, silent = TRUE)
 			  dump <- rnassign()
@@ -1737,7 +1743,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    }
 		    if (cnt == 5) {
 			print("Step 5 of 6*********************************************************************")
-			currentmodID1 <- get("tempparam_select", envir = .GlobalEnv)
+			currentmodID1 <- get("tempparam.select", envir = .GlobalEnv)
 			print("--ASSESSING MODEL: richardsR32.lis  --")
 			richardsR32.lis <- rncheckfirst(richardsR32.lis,
 			  existing = existing)
@@ -1746,7 +1752,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  richardsR32.lis <- try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = 1, Rk = 1,
-			      Ri = 1, RM = 1, modno = 32), data = userdata)
+			      Ri = 1, RM = 1, modno = 32, pn.options = .modstptemp), data = userdata)
 			  }, silent = TRUE)
 			dump <- rnassign()
 			step5stat <- extraF(richardsR32.lis, currentmodel)
@@ -1863,16 +1869,16 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    row.names(stepwisetable) <- c("Step 1", "Step 2", "Step 3",
 		"Step 4", "Step 5", "Step 6")
 	    stepwisetable[is.na(stepwisetable)] <- ""
-	    print("###########  Minimal applicable model arrived at by stepwise reduction is saved as pn_bestmodel.lis  ################")
-	    assign("pn_bestmodel.lis", currentmodel, envir = globalenv())
+	    print("###########  Minimal applicable model arrived at by stepwise reduction is saved as pn.bestmodel.lis  ################")
+	    assign("pn.bestmodel.lis", currentmodel, envir = globalenv())
 	    return(stepwisetable)
 	    ##value<< A \code{\link{data.frame}} containing statistics produced by \code{\link{extraF}}
 	    ## evaluations at each step, detailing the name of the general and best reduced model at each
 	    ## step. The overall best model evaluated by the end of the function is saved globally as
-	    ## \eqn{pn_bestmodel.lis}
+	    ## \eqn{pn.bestmodel.lis}
 	    ## The naming convention for models is a concatenation of 'richardsR', the modno and '.lis'
 	    ## (see \code{\link{SSposnegRichards}}).
-	    ##seealso<< \code{\link{pn_mod_compare}}
+	    ##seealso<< \code{\link{pn.mod.compare}}
 	    ## \code{\link{extraF}}
 	    ## \code{\link{SSposnegRichards}}
 	    ## \code{\link{nlsList}}
@@ -1882,26 +1888,26 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
     ## (which model is being fitted)
 }
 , ex = function(){
-#run model selection for posneg_data object (only first 3 group levels for example's sake)
-data(posneg_data)
-subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 40)
-modseltable <- pn_modselect_step(subdata$age, subdata$mass,
+#run model selection for posneg.data object (only first 3 group levels for example's sake)
+data(posneg.data)
+subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
+modseltable <- pn.modselect.step(subdata$age, subdata$mass,
     subdata$id, existing = FALSE)
 
 #fit nlsList model initially and then run model selection
-#for posneg_data object when at least one model is already fit
+#for posneg.data object when at least one model is already fit
 #note forcemod is set to 3 so that models 21-36 are evaluated
 #(only first 4 group levels for example's sake)
-subdata<-subset(posneg_data, as.numeric(row.names (posneg_data) ) < 40)
+subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
 richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
    Infl = Infl, M = 1, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = 1 , modno = 22)
                         ,data = subdata)
-modseltable <- pn_modselect_step(subdata$age, subdata$mass,
+modseltable <- pn.modselect.step(subdata$age, subdata$mass,
     subdata$id, forcemod = 3, existing = TRUE)
 
 #run model selection ranked by residual standard error*sample size
 #(only first 4 group levels for example's sake)
-modseltable <- pn_modselect_step(subdata$age, subdata$mass,
+modseltable <- pn.modselect.step(subdata$age, subdata$mass,
     subdata$id, penaliz='1*(n)', existing = TRUE)  
 }
 )
