@@ -126,7 +126,6 @@ curve(posnegRichards.eqn(x, Asym = par[1], K = par[2], Infl = par[3], modno = 20
 }
 \seealso{\code{\link{nlme}}
 \code{\link{SSlogis}}
-\code{\link[richards]{richards}}
 }
 \author{Stephen Oswald <ozsao23@hotmail.com>}
 

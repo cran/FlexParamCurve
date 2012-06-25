@@ -1,4 +1,4 @@
-1bf3dffea81d9759f82394ec603311a2 *DESCRIPTION
+2cf1a3cfa58c3088fa3bc8392862a9aa *DESCRIPTION
 7acfa491c1f26c140a56d7be8a4f04fc *NAMESPACE
 e6a983ec89af30d3a2ffd1147576faf9 *R/SSposnegRichards.R
 63d877d8ff2bb4039f0b9391c7e7df36 *R/change.pnparameters.R
@@ -14,8 +14,8 @@ a64a326cd7ae4f748d68ece59364ccf1 *data/penguin.data.rda
 adf04ce0c0f6d79577f0e31a615c07ea *data/posneg.data.rda
 ad1e456f9e2e5984fc7767e20ed55964 *data/posnegRichards.calls.rda
 d71d0d1beafcb0c9038cdfbc676795e9 *data/tern.data.rda
-1a30f67f6cfd1a56ad3add502041139f *man/FlexParamCurve-package.Rd
-c5dabda5e70f4a4831a74437731c951a *man/SSposnegRichards.Rd
+8c4240cf6e8329e40a68492023dfebc6 *man/FlexParamCurve-package.Rd
+47e6ccddaab601d0dd8b1a23887e1677 *man/SSposnegRichards.Rd
 7213d1a9df39b2a95675ee5838883cc3 *man/change.pnparameters.Rd
 fc5548c707c93cc3f5426bd9f6d0b990 *man/extraF.Rd
 5bf867ad1973b9e21ea6854f8e24d643 *man/extraF.nls.Rd

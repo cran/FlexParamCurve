@@ -254,7 +254,6 @@ parameter estimates, fitting options and bounds}
 
 \seealso{\code{\link{SSlogis}}
 \code{\link{SSgompertz}}
-\code{\link[richards]{SSrichards}}
 \code{\link{posnegRichards.eqn}}}
 \examples{
  set.seed(3) #for compatability issues
