@@ -7,17 +7,17 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
                           grp,
                           ### a factor of same length as x and y that distinguishes groups within
                           ### the dataset
+                          pn.options,
+                          ### required character value for name of list object populated with starting 
+                          ### parameter estimates, fitting 
+                          ### options and bounds or destination for modpar to write a new list (see Details)
                           forcemod = 0,
                           ### optional numeric value to constrain model selection (see Details)
                           existing = FALSE,
                           ### optional logical value specifying whether some of the relevant models
                           ### have already been fitted
-                          penaliz = "1/sqrt(n)",
+                          penaliz = "1/sqrt(n)"
                           ### optional character value to determine how models are ranked (see Details)
-                          pn.options
-                          ### required character value for name of list object populated with starting 
-                          ### parameter estimates, fitting 
-                          ### options and bounds or destination for modpar to write a new list (see Details)
                           ) {
 ##description<< This function performs model selection for \code{\link{nlsList}} models fitted using
 ## \code{\link{SSposnegRichards}}.

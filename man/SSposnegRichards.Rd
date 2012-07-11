@@ -246,7 +246,7 @@ parameter estimates, fitting options and bounds}
      a wide variety of values, particularly negative values for M or RM,
      only real component of complex numbers are modelled and integer versions
      of M and RM are used during estimation if floating values cause conversion
-     issues - see \code{\link[richards]{SSrichards}} for similar discussion.
+     issues.
     
      Speed of the function depends on the complexity of the data being fit.
 }

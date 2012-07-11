@@ -2,6 +2,7 @@ modpar <-
 structure(function
 		(x,
                      y,
+                     pn.options = NA,
                      first.y = NA,
                      x.at.first.y = NA,
                      last.y = NA,
@@ -10,7 +11,8 @@ structure(function
                      verbose = FALSE,
                      force8par = FALSE,
                      force4par = FALSE,
-                     pn.options = NA
+                     suppress.text = FALSE,
+                     ...
                      ) {
     options(warn = -1)
     assign(".paramsestimated", FALSE, envir = globalenv())
@@ -22,14 +24,14 @@ structure(function
     pnoptnm <- pnopt
     if(!is.na(twocomponent.x) & force4par == TRUE) 
     	stop("Cannot force a two component Richards model to have a single component.Set force4par to FALSE")
-    prntqut<-function(tx) print(noquote(tx))
-    prntqut("modpar will attempt to parameterize your data using the following sequential procedures:")
-    prntqut("  (1) Extract parameter estimates for 8-parameter double-Richards curve in nls")
-    prntqut("  (2) Use getInitial to retrieve parameter estimates for 8-parameter double-Richards curve")
-    prntqut("  (3) Extract parameter estimates for 4-parameter Richards curve in nls")
-    prntqut("  (4) Use getInitial to retrieve parameter estimates for 4-parameter Richards curve")
-    prntqut("if any approaches are successful, modpar will return these and terminate at that stage")
-    prntqut(" ")
+    prntqut<-function(supp, tx) if(supp == FALSE) print(noquote(tx))
+    prntqut( suppress.text, "modpar will attempt to parameterize your data using the following sequential procedures:")
+    prntqut( suppress.text, "  (1) Extract parameter estimates for 8-parameter double-Richards curve in nls")
+    prntqut( suppress.text, "  (2) Use getInitial to retrieve parameter estimates for 8-parameter double-Richards curve")
+    prntqut( suppress.text, "  (3) Extract parameter estimates for 4-parameter Richards curve in nls")
+    prntqut( suppress.text, "  (4) Use getInitial to retrieve parameter estimates for 4-parameter Richards curve")
+    prntqut( suppress.text, "if any approaches are successful, modpar will return these and terminate at that stage")
+    prntqut( suppress.text, " ")
     detl <- TRUE
     if(verbose == TRUE) detl <- FALSE
     skel <- rep(list(1), 15)
@@ -112,14 +114,14 @@ structure(function
     	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
             savvalue<-value
             value<-NA
-    prntqut("(3) Status of 4-parameter Richards curve nls fit:")
+    prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
     try({ value <- parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
-                    K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy))")
+                    K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy, ...))")
          		}, silent = detl)
-         if(is.na(value[1]) == FALSE & class(value)[1] != "try-error") prntqut("4 parameter nls fit successful")
+         if(is.na(value[1]) == FALSE & class(value)[1] != "try-error") prntqut( suppress.text, "4 parameter nls fit successful")
          if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
-          prntqut("....4-parameter nls fit failed")
-          prntqut("(4) Status of 4-parameter Richards getInitial call:")
+          prntqut( suppress.text, "....4-parameter nls fit failed")
+          prntqut( suppress.text, "(4) Status of 4-parameter Richards getInitial call:")
          value <- parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
 	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
             if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
@@ -127,12 +129,12 @@ structure(function
             assign(".paramsestimated", FALSE, envir = globalenv())
  
          					} else {
-         					prntqut("....4 parameter getInitial successful")
+         					prntqut( suppress.text, "....4 parameter getInitial successful")
          					}
          }
   if(!is.na(value[1]) & class(value)[1] != "try-error" & !is.na(savvalue[1]) & class(savvalue)[1] != "try-error") value<-evlfit(savvalue,value)
     }else{
-    if(detl == TRUE) prntqut("Estimating parameter bounds....")
+    if(detl == TRUE) prntqut( suppress.text, "Estimating parameter bounds....")
     value <- parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
                 K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
             Ri = Ri, RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
@@ -150,32 +152,32 @@ structure(function
             			}
          savvalue<-value
          value<-NA
-    if(force4par == TRUE & !is.na(twocomponent.x)) prntqut("Cannot force a two component model to have 4 parameters")
-    prntqut("(1) Status of 8-parameter double-Richards curve fit in nls:")
+    if(force4par == TRUE & !is.na(twocomponent.x)) prntqut( suppress.text, "Cannot force a two component model to have 4 parameters")
+    prntqut( suppress.text, "(1) Status of 8-parameter double-Richards curve fit in nls:")
     value <- parseval("try(coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
         K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,
-        RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy)), silent = detl)")  
+        RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy, ...)), silent = detl)")  
     if (is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
-        prntqut("....8 parameter nls fit failed")
-        prntqut("(2) Status of 8-parameter double-Richards getInitial call")
+        prntqut( suppress.text, "....8 parameter nls fit failed")
+        prntqut( suppress.text, "(2) Status of 8-parameter double-Richards getInitial call")
         value <- parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
             K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
             Ri = Ri, RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
              if (is.na(value[1]) == FALSE & class(value)[1] != "try-error") {
              		succ <- TRUE
-             		prntqut("....8-parameter getInitial successful")
+             		prntqut( suppress.text, "....8-parameter getInitial successful")
              		}
     } else {
-        prntqut("....8-parameter nls fit successful")
+        prntqut( suppress.text, "....8-parameter nls fit successful")
         succ <- TRUE
     }
     if(!is.na(value[1]) & class(value)[1] != "try-error" & !is.na(savvalue[1]) & class(savvalue)[1] != "try-error") value<-evlfit(savvalue,value)
     if ((is.na(value[1]) == TRUE & is.na(twocomponent.x)) | (class(value)[1] == "try-error" & is.na(twocomponent.x)) ) {
-        prntqut("(3) Status of 4-parameter Richards curve nls fit:")
-        prntqut("if force8par==TRUE second curve parameters estimated as RAsym=Asym*0.05, Rk=K, Ri=Infl, RM=M")
+        prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
+        prntqut( suppress.text, "if force8par==TRUE second curve parameters estimated as RAsym=Asym*0.05, Rk=K, Ri=Infl, RM=M")
         try({
             value <- parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
-                K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy))")
+                K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy, ...))")
             if (force8par == TRUE) {
                 value <- c(value, value[1] * 0.05, value[2],
                   value[3], value[4])
@@ -184,8 +186,8 @@ structure(function
             }
         }, silent = detl)
         if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
-          prntqut("....4-parameter nls fit failed")
-          prntqut("(4) Status of 4-parameter Richards getInitial call:")
+          prntqut( suppress.text, "....4-parameter nls fit failed")
+          prntqut( suppress.text, "(4) Status of 4-parameter Richards getInitial call:")
           try({
  	    value <- parseval("getInitial(y ~ SSposnegRichards(x, Asym = Asym,
 	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy)")
@@ -196,9 +198,9 @@ structure(function
 	        "Rk", "Ri", "RM")
 	     }
           }, silent = detl)
-          if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") prntqut("....4 parameter getInitial failed")
+          if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") prntqut( suppress.text, "....4 parameter getInitial failed")
         } else {
-        prntqut("....4 parameter nls successful")
+        prntqut( suppress.text, "....4 parameter nls successful")
         }
         if(is.na(value[1]) == TRUE | class(value)[1] == "try-error")
             stop("**Estimates not available for data provided**. Please check data or provide estimates manually, see ?modpar")

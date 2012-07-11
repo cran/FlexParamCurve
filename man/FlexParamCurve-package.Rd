@@ -67,8 +67,8 @@ this list, either manually or using \code{\link{change.pnparameters}}.
  \tabular{ll}{Package: \tab FlexParamCurve\cr
 Type: \tab Package\cr
 Title: \tab Tools to Fit Flexible Parametric Curves\cr
-Version: \tab 1.0\cr
-Date: \tab 2011-09-15\cr
+Version: \tab 1.4-2\cr
+Date: \tab 2012-07-11\cr
 Author: \tab Stephen Oswald\cr
 Maintainer: \tab Stephen Oswald <ozsao23@hotmail.com>\cr
 License: \tab GPL-2\cr

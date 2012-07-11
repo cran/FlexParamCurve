@@ -6,23 +6,24 @@
 pn.modselect.step(x,
 y,
 grp,
+pn.options,
 forcemod = 0,
 existing = FALSE,
-penaliz = "1/sqrt(n)",
-pn.options)
+penaliz = "1/sqrt(n)")
 }
 \arguments{
   \item{x}{a numeric vector of the primary predictor}
   \item{y}{a numeric vector of the response variable}
   \item{grp}{a factor of same length as x and y that distinguishes groups within
 the dataset}
+  \item{pn.options}{required character string specifying name of 
+\code{\link{list}} object populated with starting 
+parameter estimates, fitting options and bounds}
   \item{forcemod}{optional numeric value to constrain model selection (see Details)}
   \item{existing}{optional logical value specifying whether some of the relevant models
 have already been fitted}
   \item{penaliz}{optional character value to determine how models are ranked (see Details)}
-  \item{pn.options}{required character string specifying name of 
-\code{\link{list}} object populated with starting 
-parameter estimates, fitting options and bounds}
+
 }
 \description{This function performs backawards stepwise model selection for \code{\link{nlsList}}
 models fitted using

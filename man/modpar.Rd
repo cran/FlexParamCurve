@@ -9,6 +9,7 @@ respectively. }
 \usage{
 modpar(x,
 y,
+pn.options = NA,
 first.y = NA,
 x.at.first.y = NA,
 last.y = NA,
@@ -17,7 +18,8 @@ twocomponent.x = NA,
 verbose = FALSE,
 force8par = FALSE,
 force4par = FALSE,
-pn.options = NA)
+suppress.text = FALSE,
+...)
 }
 \arguments{
   \item{x}{a numeric vector of primary predictor variable}
@@ -38,6 +40,8 @@ curve should be set to defaults if they cannot be estimated}
 should be ignored - effectively using simple Richards curve}
  \item{pn.options}{character string specifying name of \code{\link{list}} object populated with starting 
 parameter estimates, fitting options and bounds or the destination for \code{modpar} to write a new list}
+ \item{suppress.text}{logical specifying whether modpar should return descriptive text to the screen during execution}
+ \item{...}{additional optional arguments to be passed to nls}
 
 }
 \details{
