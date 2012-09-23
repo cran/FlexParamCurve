@@ -40,50 +40,50 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
          if (class(submodel)[1] == "numeric") {
             is.na(submodel) <- TRUE
             assign("legitmodel", genmodel, envir = .GlobalEnv)
-	 df1 <- as.numeric(unlist(summary(genmodel)["df.residual"]))
+	 residu <-resid(genmodel)
+         origRSE <- as.numeric(unlist(summary(genmodel))["RSE"]) 
+	 newRSE <- origRSE  * sqrt( length(residu))/ sqrt(length(residu[!is.na(residu)]))
 	 sdf<- unlist(coef(genmodel)[1])
-	 lsdf <- length(sdf[!is.na(sdf)])
-	 if(lsdf == 0) lsdf =1
-	 df1 <- (df1 / lsdf ) * length(sdf)
-	 df1 <- as.integer(round(df1))
-         RSSa <- (as.numeric(unlist(summary(genmodel))["RSE"])^2) *
-            df1         
+ 	 mindfval <- as.numeric(unlist(summary(genmodel)["df"]))
+	 mindfval <- round(mean (mindfval[1:length(mindfval)/2], na.rm = TRUE) )
+         df1 <- length(residu) - (length(sdf) * mindfval)
+         RSSa <- newRSE * df1
          output <- data.frame(NA, df1, NA, NA, RSSa, NA)
          }
          if (class(genmodel)[1] == "numeric") {
             is.na(genmodel) <- TRUE
             assign("legitmodel", submodel, envir = .GlobalEnv)
-	 df2 <- as.numeric(unlist(summary(submodel)["df.residual"]))
+	 residu <-resid(submodel)
+         origRSE <- as.numeric(unlist(summary(submodel))["RSE"]) 
+	 newRSE <- origRSE  * sqrt( length(residu))/ sqrt(length(residu[!is.na(residu)]))
 	 sdf<- unlist(coef(submodel)[1])
-	 lsdf <- length(sdf[!is.na(sdf)])
-	 if(lsdf == 0) lsdf =1
-	 df2 <- (df2 / lsdf ) * length(sdf)
-	 df2 <- as.integer(round(df2))			
-         RSSb <- (as.numeric(unlist(summary(submodel))["RSE"])^2) *
-            df2
+ 	 mindfval <- as.numeric(unlist(summary(submodel)["df"]))
+	 mindfval <- round(mean (mindfval[1:length(mindfval)/2], na.rm = TRUE) )
+         df2 <- length(residu) - (length(sdf) * mindfval)
+         RSSb <- newRSE * df2
          output <- data.frame(NA, df2, NA, NA, NA, RSSb)    
          }
         }
      } else {
-        df1 <- as.numeric(unlist(summary(genmodel)["df.residual"]))
-	sdf<- unlist(coef(genmodel)[1])
-	lsdf <- length(sdf[!is.na(sdf)])
-	if(lsdf == 0) lsdf =1
-	df1 <- (df1 / lsdf ) * length(sdf)
-	df1 <- as.integer(round(df1))
-        RSSa <- (as.numeric(unlist(summary(genmodel))["RSE"])^2) *
-            df1
-        df2 <- as.numeric(unlist(summary(submodel)["df.residual"]))
-	sdf<- unlist(coef(submodel)[1])
-	lsdf <- length(sdf[!is.na(sdf)])
-	if(lsdf == 0) lsdf =1
-	df2 <- (df2 / lsdf ) * length(sdf)
-	df2 <- as.integer(round(df2))
-        RSSb <- (as.numeric(unlist(summary(submodel))["RSE"])^2) *
-            df2
-        F <- (RSSb - RSSa)/(df2 - df1)/(RSSa/df1)
-        sigF <- 1 - pf(abs(F), df1, df2)
-        output <- data.frame(F, df2 - df1, df2, sigF, RSSa, RSSb)
+	 residu <-resid(genmodel)
+         origRSE <- as.numeric(unlist(summary(genmodel))["RSE"]) 
+	 newRSE <- origRSE  * sqrt( length(residu))/ sqrt(length(residu[!is.na(residu)]))
+	 sdf<- unlist(coef(genmodel)[1])
+ 	 mindfval <- as.numeric(unlist(summary(genmodel)["df"]))
+	 mindfval <- round(mean (mindfval[1:length(mindfval)/2], na.rm = TRUE) )
+         df1 <- length(residu) - (length(sdf) * mindfval)
+         RSSa <- newRSE * df1
+	 residu <-resid(submodel)
+         origRSE <- as.numeric(unlist(summary(submodel))["RSE"]) 
+	 newRSE <- origRSE  * sqrt( length(residu))/ sqrt(length(residu[!is.na(residu)]))
+	 sdf<- unlist(coef(submodel)[1])
+ 	 mindfval <- as.numeric(unlist(summary(submodel)["df"]))
+	 mindfval <- round(mean (mindfval[1:length(mindfval)/2], na.rm = TRUE) )
+         df2 <- length(residu) - (length(sdf) * mindfval)
+         RSSb <- newRSE * df2
+         F <- (RSSb - RSSa)/(df2 - df1)/(RSSa/df1)
+         sigF <- 1 - pf(abs(F), df1, df2)
+         output <- data.frame(F, df2 - df1, df2, sigF, RSSa, RSSb)
     }
     names(output) <- c("Fstat", "df_n", "df_d", "P", "RSS_gen",
         "RSS_sub")

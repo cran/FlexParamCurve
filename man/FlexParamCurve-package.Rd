@@ -67,8 +67,8 @@ this list, either manually or using \code{\link{change.pnparameters}}.
  \tabular{ll}{Package: \tab FlexParamCurve\cr
 Type: \tab Package\cr
 Title: \tab Tools to Fit Flexible Parametric Curves\cr
-Version: \tab 1.4-2\cr
-Date: \tab 2012-07-11\cr
+Version: \tab 1.4-3\cr
+Date: \tab 2012-09-23\cr
 Author: \tab Stephen Oswald\cr
 Maintainer: \tab Stephen Oswald <ozsao23@hotmail.com>\cr
 License: \tab GPL-2\cr
@@ -76,6 +76,13 @@ Depends: \tab nlme\cr
 Enhances: \tab nlme\cr
 LazyLoad: \tab yes\cr}
 }
+\references{## Oswald, S.A. et al. (Early view) FlexParamCurve: R package for flexible
+     fitting of nonlinear parametric curves. Methods in Ecology and Evolution.
+     doi: 10.1111/j.2041-210X.2012.00231.x (see also tutorial and introductory videos at:
+     http://www.methodsinecologyandevolution.org/view/0/podcasts.html
+     (posted September 2012 - if no longer at this link, check the archived videos at:
+     http://www.methodsinecologyandevolution.org/view/0/VideoPodcastArchive.html#allcontent
+}     
 \examples{
 # run all-model selection for posneg.data object (Step 2) without need to run any previous functions
 \donttest{

@@ -22,7 +22,7 @@ check that models are nested prior to use.
 This function is primarily designed to be called by the model selection functions
 \code{\link{pn.modselect.step}} and \code{\link{pn.mod.compare}} but can be used independently.
 
-Extra sum-of-squares is obtained from: \preformatted{F = (SS1 - SS2)(df1 - df2) / (SS2 / df2)}
+Extra sum-of-squares is obtained from: \preformatted{F = (SS1 - SS2)/(df1 - df2) / (SS2 / df2)}
 where SS = sum-of-squares and df = degrees of freedom, for the more reduced model (1) and the
 more general model (2), respectively.
 
@@ -30,11 +30,14 @@ If the F value is significant then the more general model provides a significant
 over the reduced model, but if the models are not significantly different then the reduced
 parameter model is to be preferred.
 
-In extraF, the value for the df is increased to the value expected if all groups (levels) were 
-fitted [i.e. df1  =  (df / # levels fit) * # levels in data]. Residual sum of squares (RSS) is 
-the calculated as residual square error * df1. Thus, RSS is enlarged for 
-models with missing levels so all models are compared based on the variability expected 
-if all levels had been fitted. This allows the Fstat from extraF to be independent of missing levels
+In extraF (formulated especially for nlsList models), the root mean square error
+(and sum of squares) is inflated to the value expected if all groups (levels) were 
+fitted [i.e. RSE  =  RSE* (sqrt(n1) / sqrt(n0)), where RSE is root mean square error, n0 is the sample size (total
+number of data points used in fit) for the model with missing levels, and n1 is the inflated sample size (total number
+of data points in dataset)]. This is based on RSE changing with the square root of sample size, as discussed in the help file for
+\code{\link{pn.mod.compare}}. Degrees of freedom are then increased to the vaue if all individuals had been fitted successfully, 
+i.e. total df - (# curve parameters * # levels). Thus, RSE and df are enlarged for models with missing levels so all models are
+compared based on the variability expected if all levels had been fitted . This allows the Fstat from extraF to be independent of missing levels
 in either of the two models.
 }
 \value{A \code{\link{data.frame}} listing the names of the models compared, F,

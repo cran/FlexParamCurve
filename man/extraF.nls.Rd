@@ -24,7 +24,7 @@ This function is not promoted for use in model selection as differences in curve
 different grouping levels in the dataset may be obscured when curves are fitted to the
 entire dataset, as in \code{\link{nls}}.
 
-Extra sum-of-squares is obtained from: \preformatted{F = (SS1 - SS2)(df1 - df2) / (SS2 / df2)}
+Extra sum-of-squares is obtained from: \preformatted{F = (SS1 - SS2)/(df1 - df2) / (SS2 / df2)}
 where SS = sum-of-squares and df = degrees of freedom, for the more reduced model (1) and the
 more general model (2), respectively. To account for missing individuals for different fits
 df are scaled in all models to the value they would be if all individuals fit successfully (note

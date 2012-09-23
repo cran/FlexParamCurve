@@ -9,7 +9,9 @@ grp,
 pn.options,
 forcemod = 0,
 existing = FALSE,
-penaliz = "1/sqrt(n)")
+penaliz = "1/sqrt(n)",
+taper.ends = 0.45,
+...)
 }
 \arguments{
   \item{x}{a numeric vector of the primary predictor}
@@ -23,7 +25,10 @@ parameter estimates, fitting options and bounds}
   \item{existing}{optional logical value specifying whether some of the relevant models
 have already been fitted}
   \item{penaliz}{optional character value to determine how models are ranked (see Details)}
-
+  \item{taper.ends}{numeric representing the proportion of the range of the x variable for which data are extended at 
+the two ends of the data set. This is used in initial estimation (prior to optim and nls optimizations) and can 
+speed up subsequent optimizations by imposing a more pronounced S-shape to both first and second curves. Defaults to 0.45.}
+  \item{...}{additional optional arguments to be passed to nlsList}
 }
 \description{This function performs backawards stepwise model selection for \code{\link{nlsList}}
 models fitted using
@@ -58,6 +63,12 @@ parameterized will be refitted, as will objects that are not of class \code{\lin
 Specifying forcemod=3 will force model selection to only consider fixed M models and setting
 forcemod=4 will force model selection to consider models with varying values of M only.
 If fitting both models 12 and 32 fails, fixed M models will be used by default.
+
+taper.ends can be used to speed up optimization as it extends the dataset at maximum and minimum extremes 
+of x by repeatedly pasting the y values at these extremes for a specified proportion of the range of x. 
+taper.ends is a numeric value representing the proportion of the range of x values are extended for and 
+defaults to 0.45 (45%) at both ends. For growth analysis, where the end of the curves are more likely to 
+tend towards a zero slope this is a suitable values. If tapered ends are not desirable then choose taper.ends = 0.
 
 Competing non-nested models are ranked by modified pooled residual square error. By default this is residual 
 standard error divided by the square root of sample size. This exponentially penalizes models for which very few

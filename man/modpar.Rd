@@ -19,6 +19,9 @@ verbose = FALSE,
 force8par = FALSE,
 force4par = FALSE,
 suppress.text = FALSE,
+taper.ends = 0.45,
+width.bounds = 1,
+bounds.error = FALSE,
 ...)
 }
 \arguments{
@@ -41,7 +44,15 @@ should be ignored - effectively using simple Richards curve}
  \item{pn.options}{character string specifying name of \code{\link{list}} object populated with starting 
 parameter estimates, fitting options and bounds or the destination for \code{modpar} to write a new list}
  \item{suppress.text}{logical specifying whether modpar should return descriptive text to the screen during execution}
- \item{...}{additional optional arguments to be passed to nls}
+ \item{taper.ends}{numeric representing the proportion of the range of the x variable for which data are extended at 
+the two ends of the data set. This is used in initial estimation (prior to optim and nls optimizations) and can 
+speed up subsequent optimizations by imposing a more pronounced S-shape to both first and second curves. Defaults to 0.45.}
+ \item{width.bounds}{a numeric indicating the proportion of the usual width of parameter bounds to be imposed during optimizations. 
+Large values may slow or terminate computations, however they could better accomodate data in which different levels exhibit very different
+parameter values.}
+ \item{bounds.error}{a logical. If true parameter estimation will terminate if initial estimation of parameters leads to
+values outside specified bounds in pn.options. If false, more appropriate bounds will be determined automatically.}
+\item{...}{additional optional arguments to be passed to nlsList}
 
 }
 \details{
@@ -101,6 +112,12 @@ the x of intersection and a separate equation is used for x-values greater than 
 the argument twocomponent.x should be set to the value for the x of intersection. If this argument
 is anything other than NA then a two-component model will be fitted when \code{\link{SSposnegRichards}}
 is called. This option will be saved in list object specified by \code{pn.options} and can be changed at will.
+
+taper.ends can be used to speed up optimization as it extends the dataset at maximum and minimum extremes 
+of x by repeatedly pasting the y values at these extremes for a specified proportion of the range of x. 
+taper.ends is a numeric value representing the proportion of the range of x values are extended for and 
+defaults to 0.45 (45%) at both ends. For growth analysis, where the end of the curves are more likely to 
+tend towards a zero slope this is a suitable values. If tapered ends are not desirable then choose taper.ends = 0.
 
 If the argument verbose = TRUE then details concerning the optimization processes within 
 \code{\link{SSposnegRichards}} are printed on screen whenever \code{\link{SSposnegRichards}} is called.

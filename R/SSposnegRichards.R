@@ -9,9 +9,11 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     nmpnmodelparamsbounds <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
 	"Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
 	"Rimin", "Rimax", "RMmin", "RMmax") 
-    try(parload <- get(pnoptname, envir = globalenv()), silent = F)
+    try({
+    parload <- get(pnoptname, envir = globalenv())
+    }, silent = TRUE)
     try({pnmodelparamsbounds <- parload[ names(parload) %in% nmpnmodelparamsbounds]
-         pnmodelparams <- parload[ names(parload) %in% nmpnmodelparams] },silent = F)
+         pnmodelparams <- parload[ names(parload) %in% nmpnmodelparams] },silent = TRUE)
     fractM <- M
     fractRM <- RM
     if( !is.numeric(modno)) modno <- get(as.character(modno), envir = .GlobalEnv )
@@ -19,7 +21,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         fractM <- 1/pnmodelparams$M
         M <- pnmodelparams$M
      }
-    if (modno != 17) {
+    if (modno < 17 | modno >= 18) {
     if (modno == 2 | modno == 22 | modno == 10 | modno == 30 | 
         modno == 11 | modno == 31 | modno == 12 | modno == 32 | 
         modno == 19 | modno == 13 | modno == 33 | modno == 14 | 
@@ -63,19 +65,22 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     }
     },silent = TRUE)
     }
-    if (!is.na(pnmodelparams$twocomponent.x)) {
-        if (pnmodelparams$force4par == TRUE) 
-            stop("Cannot force a two component Richards model to have a single component.Set force4par to FALSE")
-        c((Asym/Re(as.complex(1 + M * exp(-K * ((x[x <= pnmodelparams$twocomponent.x]) - 
-            Infl)))^(fractM))), (RAsym/Re(as.complex(1 + RM * 
-            exp(-Rk * ((x[x > pnmodelparams$twocomponent.x]) - 
+  if (!is.na(pnmodelparams$twocomponent.x )) {
+        if (pnmodelparams$force4par == TRUE)
+            stop("Cannot force a two component Richards model to have a single component.Either set force4par to FALSE
+            	 or twocomponent.x to NA")
+        c((Asym/Re(as.complex(1 + M * exp(-K * ((x[x <= pnmodelparams$twocomponent.x]) -
+            Infl)))^(fractM))), (RAsym/Re(as.complex(1 + RM *
+            exp(-Rk * ((x[x > pnmodelparams$twocomponent.x]) -
                 Ri)))^(fractRM))))
-    } else {
-        if (modno == 17) {
+   } else {
+        if (modno >= 17 & modno < 18) {
             if (pnmodelparams$force4par == TRUE) {
                 Asym/Re(as.complex(1 + exp(Infl - x)/M))
             } else {
-                (Asym/Re(as.complex(1 + exp(Infl - x)/M))) + 
+            if(modno == 17.1 | modno == 17.3) RAsym <- (-Asym)
+            if(modno == 17.2 | modno == 17.3) RM <- M
+             (Asym/Re(as.complex(1 + exp(Infl - x)/M))) + 
                   (RAsym/Re(as.complex(1 + exp(Ri - x)/RM)))
             }
         } else {
@@ -127,10 +132,28 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 }, initial = function(mCall, LHS, data, modno, pn.options) {
     xy <- sortedXyData(mCall[["x"]], LHS, data)
     substparams<-NA
+    counterR<-0
     optnm <- mCall[["pn.options"]]
     optvarnm <- as.character(optnm)
-    optvar<- get(optvarnm, .GlobalEnv) 
-	    skel <- rep(list(1), 15)
+    optvar<- get(optvarnm, .GlobalEnv)
+    if(length(optvar$taper.ends) == 1) taper.ends <- optvar$taper.ends
+     if(length(optvar$modpar) == 1) {
+     frommodpar <- TRUE
+     				} else {
+     frommodpar <- FALSE    				
+     				    }
+     if(length(optvar$width.bounds) == 1) {
+     smallmult <- 1 * as.numeric(optvar$width.bounds)
+     mediummult <- 2  * as.numeric(optvar$width.bounds)
+     largemult <- 3  * as.numeric(optvar$width.bounds)
+     					  } else {
+     smallmult <- 1
+     mediummult <- 2
+     largemult <- 3
+     					  }
+     pntbndserr <- FALSE
+     if(length(optvar$bounds.error) == 1) pntbndserr <- TRUE
+  	    skel <- rep(list(1), 15)
 	    pnmodelparams <- c(rep(NA, 12),rep(FALSE,3))
 	    pnmodelparams <- relist(pnmodelparams, skel)	    
 	    names(pnmodelparams) <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
@@ -162,8 +185,13 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 	    "%w/o%" <- function(x, y) x[!x %in% y] #--  x without y
 	    unmatchbounds <- (names(boundsprovided) %w/o% matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
 		"twocomponent.x","verbose","force4par")
+	    modno <- mCall[["modno"]]
+	    if(modno == 12 | modno == 32 | optvar$force4par == TRUE) unmatchbounds <- (names(boundsprovided) %w/o% 
+	    	 matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
+		"twocomponent.x","verbose","force4par", "RAmin","RAmax","Rkmin","Rkmax","Rimin","Rimax","RMmin","RMmax")
 	    .paramsestimated <- try( get(".paramsestimated",.GlobalEnv) ,silent = TRUE)
 	    if( class(.paramsestimated) == "try-error" ) .paramsestimated <- TRUE
+	    if(modno != 18 & modno != 19 ){
 	    if(length(unmatchbounds) > 0 & .paramsestimated == TRUE ) {
 	    print("WARNING: In pn.options:  Some parameters specified are missing min/max bounds. Running modpar to populate these bounds.")
 	    print("Note: this will also populate any parameters appropriate to the specified modno that are also missing")
@@ -175,12 +203,19 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     	pnmodelparams[which(names(pnmodelparams) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparams))]
     	pnmodelparamsbounds[which(names(pnmodelparamsbounds) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparamsbounds))]
    	options(warn=0)		  				     
-  								}  
+  								}
+  					} else {
+  					}
     valexp <- sapply( c(unlist(pnmodelparams),unlist(pnmodelparamsbounds), 
         	unlist( optvar[names(optvar) %w/o% c(names(pnmodelparamsbounds),names(pnmodelparams)) ]) ), function(x) list(x))
-    names( valexp[1:31] ) <- names( c(pnmodelparams,pnmodelparamsbounds) )
-    valexp[1:31] <- as.numeric( valexp[1:31] )
-    valexp[13:15] <- as.logical( valexp[13:15] )
+    names( valexp[1:31] ) <- names( c(pnmodelparams[1:15],pnmodelparamsbounds) )
+    valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
+    valexp[14:15] <- as.logical( valexp[14:15] )
+    if(is.numeric(pnmodelparams$twocomponent.x)) {
+        valexp[13] <- as.numeric( valexp[13] )
+    } else {
+  	valexp[13] <- as.logical( valexp[13] )     	
+    }
     assign(optvarnm, valexp, .GlobalEnv) 
     modno <- mCall[["modno"]]
     if( !is.numeric(modno)) modno <- get(as.character(modno), envir = .GlobalEnv )
@@ -199,10 +234,10 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     if("Ri" %in% names(invars)) stop("force4par is TRUE, therefore use models without RAsym, Rk, Ri or RM")
     if("RM" %in% names(invars)) stop("force4par is TRUE, therefore use models without RAsym, Rk, Ri or RM")
     }
-    if (modno != 17) {
     if (!"Asym" %in% names(invars)) stop(paste("Parameter Asym required for modno = ", modno, " but is absent from user-provided call", sep = ""))
     if (!"Infl" %in% names(invars)) stop(paste("Parameter Infl required for modno = ", modno, " but is absent from user-provided call", sep = ""))
-    if (!"K" %in% names(invars) & modno != 17) stop(paste("Parameter K required for modno = ", modno, " but is absent from user-provided call", sep = ""))
+    if (!"K" %in% names(invars) & (modno < 17 | modno >= 18) ) 
+    	stop(paste("Parameter K required for modno = ", modno, " but is absent from user-provided call", sep = ""))
     if (modno <= 19) {
     	if (!"M" %in% names(invars)) stop(paste("Parameter M required for modno = ", modno, " but is absent from user-provided call", sep = ""))
     	if (.paramsestimated != FALSE & !"M" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
@@ -212,7 +247,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         modno != 11 & modno != 31 & modno != 12 & modno != 32 & 
         modno != 19 & modno != 13 & modno != 33 & modno != 14 & 
         modno != 34 & modno != 15 & modno != 35 & modno != 16 & 
-        modno != 36 & modno != 20 & modno != 32) {        
+        modno != 36 & modno != 20 & modno != 32 & modno != 17.2 & modno != 17.3) {        
         if (!"RM" %in% names(invars)) stop(paste("Parameter RM required for modno = ", modno, " but is absent from user-provided call", sep = ""))
    	if (.paramsestimated != FALSE & !"RM" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
     		stop(paste("Parameter RM required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
@@ -221,7 +256,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         modno != 7 & modno != 27 & modno != 9 & modno != 29 & 
         modno != 10 & modno != 30 & modno != 12 & modno != 32 & 
         modno != 19 & modno != 14 & modno != 34 & modno != 16 & 
-        modno != 36 & modno != 20 & modno != 32) {
+        modno != 36 & modno != 20 & modno != 32 & modno != 17.1 & modno != 17.3) {
         if (!"RAsym" %in% names(invars)) stop(paste("Parameter RAsym required for modno = ", modno, " but is absent from user-provided call", sep = ""))
    	if (.paramsestimated != FALSE & !"RAsym" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
     		stop(paste("Parameter RAsym required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
@@ -230,7 +265,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         modno != 5 & modno != 25 & modno != 6 & modno != 26 & 
         modno != 10 & modno != 30 & modno != 11 & modno != 31 & 
         modno != 12 & modno != 32 & modno != 19 & modno != 13 & 
-        modno != 33 & modno != 20 & modno != 32) {
+        modno != 33 & modno != 20 & modno != 32 & modno != 17 &
+        modno != 17.1 & modno != 17.2 & modno != 17.3) {
         if (!"Rk" %in% names(invars)) stop(paste("Parameter Rk required for modno = ", modno, " but is absent from user-provided call", sep = ""))
 	if (.paramsestimated != FALSE & !"Rk" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
     		stop(paste("Parameter Rk required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
@@ -239,23 +275,43 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         modno != 8 & modno != 28 & modno != 9 & modno != 29 & 
         modno != 11 & modno != 31 & modno != 12 & modno != 32 & 
         modno != 19 & modno != 15 & modno != 35 & modno != 16 & 
-        modno != 36 & modno != 20 & modno != 32) {
+        modno != 36 & modno != 20 & modno != 32 ) {
         if (!"Ri" %in% names(invars)) stop(paste("Parameter Ri required for modno = ", modno, " but is absent from user-provided call", sep = ""))
 	if (.paramsestimated != FALSE & !"Ri" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
-    		stop(paste("Parameter Ri required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
-    }    
+    		stop(paste("Parameter Ri required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))    
     }
     if (is.na(modelparams$first.y) == FALSE) {
         if (is.na(modelparams$x.at.first.y))
         	modelparams$x.at.first.y <- 0
-        xy <- rbind(xy, c(modelparams$x.at.first.y, modelparams$first.y))
+        modrngx <- diff(c( c(min(xy$x, na.rm = TRUE), max(xy$x, na.rm = TRUE)) ))
+        xy <- rbind(xy, c(seq( (modelparams$x.at.first.y - (0.25*modrngx) ),
+        	modelparams$x.at.first.y + (0.25*modrngx) ,length.out=10)
+        	, rep(modelparams$first.y, 10) ))
         xy <- xy[order(xy$x), ]
     }
     if (is.na(modelparams$last.y) == FALSE) {
         if (is.na(modelparams$x.at.last.y)) 
             stop("x.at.last.y must be specified if last.y is not NA")
-        xy <- rbind(xy, c(modelparams$x.at.last.y, modelparams$last.y))
+        if (is.na(modelparams$last.y)) 
+            stop("last.y must be specified if x.at.last.y is not NA")
+        modrngx <- diff(c( c(min(xy$x, na.rm = TRUE), max(xy$x, na.rm = TRUE)) ))
+        xy <- rbind(xy, c(seq( (modelparams$x.at.last.y - (0.25*modrngx) ),
+        	modelparams$x.at.last.y + (0.25*modrngx) ,length.out=10)
+        	, rep(modelparams$last.y, 10) ))
+        xy <- xy[order(xy$x), ]
     }
+    roundparscale <- function(x) {
+    options(warn=-1)
+    if(x == 0 | length(x) == 0 | is.na(x) == TRUE) {
+    	y = 1
+    } else {
+        y = (10^ceiling(log10(abs(x))))/10
+        if(x < 0) y = y * -1
+    }
+    if(is.na(y) == TRUE) y = 1
+    options(warn=0)
+    return(y)
+    				}
     sub <- subset(xy, xy$y == max(xy$y))
     tAsym <- mean(sub$x)
     SSposnegRichardsF <- function(x, Asym, K, Infl, M, RAsym, 
@@ -352,6 +408,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         peakage1<-min(xy$x, na.rm = TRUE)
         peakage2<-min(xy$x, na.rm = TRUE)
         if (length(stationry[, 1]) > 2) {
+            savpeakmass2<-NA
+            savpeakage2<-NA
             stdist <- rep(NA, length(stationry[, 1]))
             stdist[2:(length(stationry[, 1]))] <- stationry[(1:(length(stationry[, 
                 1]) - 1)), 1] - stationry[2:(length(stationry[, 
@@ -475,7 +533,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 } else {
                   adjmass1 <- 0
                 }
-             } else {   
+             } else { 
                     cnting <- FALSE
 		    if(length(stationry[, 1])==0) {
         	    peakage1 <- subset(xy$x, xy$y == max(xy$y))[1]
@@ -501,7 +559,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             peakage1 <- peaksav[2]
             peakage2 <- peaksav[1]
         }
-        if (is.na(Intage) == TRUE) {
+	if (is.na(Intage) == TRUE) {
             check1 <- subset(data.frame(xval, movavg), xval >= 
                 peakage1 & xval <= peakage2)
             check1 <- check1[order(check1$xval), ]
@@ -535,18 +593,41 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 }
             }
         }
-        if (is.na(Intage) == TRUE) 
+ 	mavrng <- diff(range(movavg))
+        xrng <- diff(range(xval))
+        plateu <- subset(data.frame(xval, movavg), 
+        	movavg < (movavg[peakage2] + 0.15*mavrng) &
+        	movavg > (movavg[peakage2] - 0.15*mavrng) )
+        stplat <- sd(plateu[,2])
+        plateu <- subset(data.frame(xval, movavg), 
+	        	movavg < (movavg[peakage2] + stplat) &
+	        	movavg > (movavg[peakage2] - stplat) )
+        if(nrow(plateu) == 0) {
+        availx <- data.frame(xval,movavg)
+	closepeakage2 <- which( abs( availx[,1]-peakage2 ) == min( abs(availx[,1]-peakage2) ) )
+	plateu <- data.frame(closepeakage2, movavg[closepeakage2])
+	}
+	try({
+	if(Intage %in% plateu[,1] == FALSE){
+	Intage <- plateu[ floor(nrow(plateu)/2),1]
+	}
+	},silent = TRUE)
+	if(length(Intage) == 0) Intage <- NA
+        if (is.na(Intage) | quantile(plateu[,1], probs = 0.90, na.rm = TRUE) > (peakage2 + 0.2*xrng) ) 
             Intage <- as.numeric(subset(xval, movavg == max(movavg, 
                 na.rm = TRUE))[1])
         Intage <- Intage * signvalmov
         if (is.na(modelparams$twocomponent.x) == FALSE) {
             if (modelparams$twocomponent.x == TRUE) {
                 modelparams$twocomponent.x <- Intage
+                pnmodelparams$twocomponent.x <- Intage
+                optvar$twocomponent.x <- Intage
                 valexp <- sapply( c(unlist(pnmodelparams),unlist(pnmodelparamsbounds), 
         		unlist( optvar[names(optvar) %w/o% c(names(pnmodelparams),names(pnmodelparamsbounds)) ]) ), function(x) list(x))
-   		names( valexp[1:31] ) <- names( c(pnmodelparams,pnmodelparamsbounds) )
+   		names( valexp[1:31] ) <- names( c(pnmodelparams[1:15],pnmodelparamsbounds) )
     		valexp[1:31] <- as.numeric( valexp[1:31] )
-    		valexp[13:15] <- as.logical( valexp[13:15] )
+    		valexp[14:15] <- as.logical( valexp[14:15] )
+    		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
     		assign(optvarnm, valexp, .GlobalEnv)    		    
             }
         }
@@ -577,17 +658,19 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     if (nrow(xyE) < 5) {
         stop("ERROR: too few distinct input values to fit the positive Richards model, aborting")
     } else {
-        moddata <- function(indata, absmin, Iage) {
+            moddata <- function(indata, absmin, Iage, taper.ends = 0) {
+    	    savindata <- indata
             rng1 <- range(indata$x)
             rng2 <- range(indata$y)
             drng <- diff(rng2)
             indata <- indata[order(indata$x), ]
-            if (indata$y[nrow(indata)] < ((drng/2) + min(indata$y))) {
+            if (max(indata$y[ ceiling( 0.8 * length(indata$y) ) : nrow(indata)], na.rm=TRUE)
+            		< ((drng/2) + min(indata$y))) {
                 starval <- (max(indata$y))
             } else {
                 starval <- (min(indata$y))
             }
-            Iagemod <- min(indata$x) - (diff(rng1) * 0.75)
+            Iagemod <- min(indata$x) - (diff(rng1) * abs(taper.ends))
             extrax <- seq(absmin, Iagemod, length.out = ceiling(length(indata$x)/20) + 
                 1)
             extrax <- extrax[2:length(extrax - 1)]
@@ -600,17 +683,21 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             } else {
                 endrval <- (max(indata$y))
             }
-            Iagemod <- max(indata$x) + (diff(rng1) * 0.75)
+            Iagemod <- max(indata$x) + (diff(rng1) * abs(taper.ends))
             extrax <- seq(max(indata$x), Iagemod, length.out = ceiling(length(indata$x)/20) + 
                 1)
             extrax <- extrax[2:length(extrax - 1)]
             extrax <- sort(extrax)
-            indata <- merge(indata, data.frame(x = extrax, y = rep(endrval, 
+            if(taper.ends != 0) indata <- merge(indata, 
+                data.frame(x = extrax, y = rep(endrval, 
                 length(extrax))), all = TRUE)
             indata <- indata[order(indata$x), ]
-            return(indata)
+            retdata <- list(indata)
+            names(retdata) <-"indata"
+            retdata[["savindata"]] <- savindata
+            return(retdata)
         }
-        trnsfrm <- function(indata, absmin, Iage) {
+        trnsfrm <- function(indata, absmin, Iage, taper.ends) {
             savdata <- indata
             rng1 <- range(indata$x)
             rng2 <- range(indata$y)
@@ -619,7 +706,10 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             orienty <- 0
             dataorient <- 0
             indata <- indata[order(indata$x), ]
-            indata <- moddata(indata, absmin, Iage)
+            indata <- moddata(indata, absmin, Iage, taper.ends = taper.ends)[["indata"]]
+            savindata <- moddata(indata, absmin, Iage, taper.ends = taper.ends)[["savindata"]]
+            names(indata) <- c("x","y")
+            names(savindata) <- c("x","y")
             if ((rng1[1] <= 0 & rng1[2] <= 0)) {
                 orientx <- 1
                 indata$x <- (-indata$x)
@@ -637,7 +727,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                     (min(indata$y)))
                   dataorient <- 1
                 } else {
-                  indata$x <- abs(abs(indata$x) - (max(abs(indata$x))))
+                  indata$x <- (abs(-(indata$x) + abs(max(indata$x))) + 
+                    (min(indata$x)))
                   indata <- indata[order(indata$x), ]
                   dataorient <- 2
                 }
@@ -645,8 +736,9 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 if (indata$y[round(nrow(indata)/2)] < ((drng/2) + 
                   min(indata$y))) {
                   indata$y <- (abs(-(indata$y) + abs(max(indata$y))) + 
-                    (min(indata$y)))
-                  indata$x <- abs(abs(indata$x) - (max(abs(indata$x))))
+                    (min(indata$y)))   
+		   indata$x <- (abs(-(indata$x) + abs(max(indata$x))) + 
+                    (min(indata$x)))
                   indata <- indata[order(indata$x), ]
                   dataorient <- 3
                 } else {
@@ -699,7 +791,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   if (orientx == 0 & orienty == 0) 
                     K <- (-K)
                 }
-                indata$x <- abs(abs(indata$x) - (max(abs(indata$x))))
+                indata$x <- (abs(-(indata$x) + abs(max(indata$x))) + 
+                    (min(indata$x)))
                 indata <- indata[order(indata$x), ]
             }
             if (orientx == 1) {
@@ -716,7 +809,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             val <- na.omit(val)
             y0 <- Inf
             y1 <- Inf
-            evly <- function(val, y1, y0, i) {
+            if(taper.ends != 0) {
+       		evly <- function(val, y1, y0, i) {
                 y1 <- sum((indata$y - richards(indata$x, val[i, 
                   1], val[i, 2], val[i, 3], val[i, 4]))^2)
                 if (y1 < y0) {
@@ -724,7 +818,21 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   indx <- i
                 }
                 return(c(y1, y0, indx))
+            }            
+            }else{
+            	evly <- function(val, y1, y0, i) {
+                y1 <- sum((savindata$y - richards(savindata$x, val[i, 
+                  1], val[i, 2], val[i, 3], val[i, 4]))^2)
+                if (y1 < y0) {
+                  y0 <- y1
+                  indx <- i
+                }
+                return(c(y1, y0, indx))
             }
+            }
+  		 if( max( val[ ,3] , na.rm = TRUE) < (min( indata$x, na.rm=TRUE)
+  			+ (0.2* max(indata$x, na.rm=TRUE)) ) ) 
+  			val[ ,3] <- val[ ,3] + (0.2* max(indata$x, na.rm=TRUE))
             for (i in 1:nrow(val)) {
                  try({
                   vald <- evly(val, y1, y0, i)
@@ -733,24 +841,131 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   indx <- vald[3]
                 }, silent = TRUE)
             }
+    	    savy1 <- Inf
+	    savy0 <- Inf
+	    sav1y1 <- Inf
+	    sav1y0 <- Inf          
+            sav1indx <- indx
+	    sav1y0 <- y0
+	    y0 <- Inf
+	    y1 <- Inf
+	    sav1val<-val
+            options(warn=-1)
+            rngi <- 0.05*diff( c( min(indata$x, na.rm = TRUE), max(indata$x, na.rm = TRUE)) )
+            rngyi <- diff( c( min(indata$y, na.rm = TRUE), max(indata$y, na.rm = TRUE)) )
+            hway <- (min(indata$y,na.rm = TRUE) + (rngyi / 2))
+            subdati <- subset(indata, indata$y >= (hway - 0.25*rngyi) 
+            	& indata$y <= (hway + 0.25*rngyi) )
+	    findi <- try(subdati$x[ ceiling(length(subdati$x) / 2) ] , silent = TRUE)
+	    try(if( nrow(findi) == 0) findi <- indata$x[ which.max(indata$y[ indata$y <= 
+	    	(min(indata$y,na.rm = TRUE) + (rngyi / 2)) ])], silent = TRUE)
+	    if(class(findi)[1] == "try-error") findi <- indata$x[ which.max(indata$y[ indata$y <= 
+	    	(min(indata$y,na.rm = TRUE) + (rngyi / 2)) ])]
+	    try(
+	    if( val[indx,3] < (findi - rngi) | val[indx,3] > (findi + rngi) ) {
+	    val[,3] <- findi
+	    	for (i in 1:nrow(val)) {
+	                     try({
+	                      vald <- evly(val, y1, y0, i)
+	                      y1 <- vald[1]
+	                      y0 <- vald[2]
+               		      }, silent = TRUE)
+	    	}
+	    }
+	    ,silent = TRUE)
+	    savindx <- indx
+	    savy0 <- y0
+	    y0 <- Inf
+	    y1 <- Inf
+	    sav0val<-val
+	    findk<-  function(a,k,i,m,desiredy,x) {
+	    	k<- seq(-2*k,2*k,length.out=100)
+	    	evalmod<-function(k) c(abs(desiredy-richards(x, a, k, i, m)) ,k)
+		outmin<-data.frame(sapply( k, evalmod))
+		if(which.min(outmin[1,])==1) {
+			k<- seq(-200*k,-2*k,length.out=100)
+			outmin<-data.frame(sapply( k, evalmod))
+		}else{
+			if(which.min(outmin[1,])==length(outmin[1,])) {
+				k<- seq(2*k,200*k,length.out=100)
+				outmin<-data.frame(sapply( k, evalmod))
+			}
+		}
+	    return(outmin[ 2, which.min(outmin[1,])])
+	    }
+	    rngk <- 0.05*diff( c( min(indata$y, na.rm = TRUE), max(indata$y, na.rm = TRUE)) )
+	    currenty <- richards(indata$x[1], val[indx,1], val[indx, 2], val[indx, 3], val[indx, 4]) 
+	    try(
+	    if( currenty < (indata$y[1] - rngk) | currenty > (indata$y[1] + rngk) ){
+	    necessk <- findk( val[indx,1], val[indx,2], val[indx,3], val[indx,4], indata$y[1], indata$x[1] )
+	    val[,2]<- necessk
+	    	for (i in 1:nrow(val)) {
+	          try({
+	               vald <- evly(val, y1, y0, i)
+	               y1 <- vald[1]
+	               y0 <- vald[2]
+	               indx <- vald[3]
+	               }, silent = TRUE)
+            	}
+	    }
+	    ,silent = TRUE)
+	    if(savy0 < y0) {
+	    indx <- savindx
+	    val <- sav0val
+	        if(sav1y0 < savy0) indx <- sav1indx
+	        if(sav1y0 < savy0) val <- sav1val
+	    } else {
+	        if(sav1y0 < y0) indx <- sav1indx
+	        if(sav1y0 < y0) val <- sav1val
+	    }
             val <- c(val[indx,1], val[indx,2], 
             		 val[indx,3], val[indx,4])
+            options(warn = 0)
             return(val)
         }
-        val3 <- trnsfrm(xyE, min(xy$x), Intage)
+        val3 <- trnsfrm(xyE, min(xy$x), Intage, taper.ends = taper.ends)
         names(val3) <- c("Asym", "K", "Infl", "M")
         Asym <- val3[1]
         K <- val3[2]
         Infl <- val3[3]
         M <- val3[4]
-        if (modno == 17) {
+        try(if(Asym > Amax) {
+        if(pntbndserr == TRUE) stop("Upper bounds for Asym are too low: Asym > Amax. If you wish bounds to be reestimated
+        	automatically, specify bounds.error = FALSE in modpar") 
+        cat("WARNING: Upper bounds for Asym are too low: Asym > Amax. These will be adjusted. Alternatively
+        	try runing modpar with option width.bounds set to more than 1 \n")
+ 	Amax <- as.numeric(Asym + (Asym * largemult))
+      		}, silent = TRUE)
+        try(if(Asym < Amin) {
+        if(pntbndserr == TRUE) stop("Lower bounds for Asym are too high: Asym < Amin. If you wish bounds to be reestimated
+        	automatically, specify bounds.error = FALSE in modpar")         
+        cat("WARNING: Lower bounds for Asym are too high: Asym < Amin. These will be adjusted. Alternatively
+        	try runing modpar with option width.bounds set to more than 1 \n")
+        Amin <- as.numeric(Asym + (Asym * -largemult))
+        		}, silent = TRUE)
+        try(if(Infl > Imax) {
+        if(pntbndserr == TRUE) stop("Upper bounds for Infl are too low: Infl  > Imax. If you wish bounds to be reestimated
+        	automatically, specify bounds.error = FALSE in modpar")         
+        cat("WARNING: Upper bounds for Infl are too low: Infl  > Imax. These will be adjusted. Alternatively
+        	try runing modpar with option width.bounds set to more than 1 \n")
+        Imax <- as.numeric(Infl + (Infl * largemult))
+        		}, silent = TRUE)
+        try(if(Infl < Imin) {
+        if(pntbndserr == TRUE) stop("Lower bounds for Infl are too high: Infl < Imin. If you wish bounds to be reestimated
+         	automatically, specify bounds.error = FALSE in modpar")         
+        cat("WARNING: Lower bounds for Infl are too high: Infl < Imin. These will be adjusted. Alternatively
+        	try runing modpar with option width.bounds set to more than 1 \n")
+        Imin <- as.numeric(Infl + (Infl * -largemult))
+        		}, silent = TRUE)
+        if (modno >= 17 & modno < 18) {
             M <- ((Infl - mean(xyE$x)) * M) - (Infl - mean(xyE$x))
+            names(M) <- "M"
         }
         val <- c(Asym, K, Infl, M)
-        if (modno > 19 | modno == 17) {
+        if (modno > 19 | (modno >= 17 & modno < 18)) {
             if (modno > 19) 
                 val <- c(Asym, K, Infl)
-            if (modno == 17) 
+            if (modno >= 17 & modno < 18) 
                 val <- c(Asym, Infl, M)
             func21 <- function(val) {
                 func23 <- function(x, K, Infl) {
@@ -762,10 +977,11 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   (1 + exp(Infl - x)/M)
                 }
                 Asym = val[1]
-                if (modno == 17) {
+                if (modno >= 17 & modno < 18) {
                   K = 1
                   Infl = val[2]
                   M = val[3]
+                  names(M) <- "M"
                   P1 <- Re(func173(xyE$x, Infl, M))
                 } else {
                   K = val[2]
@@ -776,13 +992,24 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 P1[P1 == Inf] <- 1e-290 * pnmodelparams$Asym
                 y1 <- Asym/P1
                 evl <- sum((xyE$y - y1)^2)
+   		if(!is.na(evl)){
                 if (evl == Inf) {
                   evl <- 1e+290
-                }
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
                 try(if (min(Im(as.complex(1 + M * exp(-K * ((0:max(xyE$x)) - 
                   Infl)))^(1/M))) < 0) {
                   evl <- 1e+200
                 }, silent = T)
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
                 return(evl)
             }
             oppar = 0
@@ -798,22 +1025,24 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 return(repl)
             }
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
-            kcheck <- try({if (Kmin < 1e-05) 
-                Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
-                if (Kmin > (-1e-05)) 
-                Kmin = (-1e-05)
-            if (modno == 17) {
+            if (Kmin < 1e-05 & Kmin >= 0 ) {
+ 	            Kmin = 1e-05
+ 	         } else {
+            if (Kmin > (-1e-05) & Kmin < 0) Kmin = (-1e-05)
+            				    }
+            if (modno >= 17 & modno < 18) {
+            	parscale1 <- sapply(c(Asym, Infl, M),roundparscale)
                 try(oppar <- optim(c(Asym, Infl, M), func21, 
                   method = "L-BFGS-B", lower = c(Amin, Imin, 
                     Mmin), upper = c(Amax, Imax, Mmax), control = list(maxit = 2000, 
-                    parscale = c(10000, 100, 10))), silent = TRUE)
+                    parscale = parscale1)), silent = TRUE)
             } else {
-                try(oppar <- optim(c(Asym, K, Infl), func21, 
+            	 parscale1 <- sapply(c(Asym, K, M),roundparscale)
+                 try(oppar <- optim(c(Asym, K, Infl), func21, 
                   method = "L-BFGS-B", lower = c(Amin, Kmin, 
                     Imin), upper = c(Amax, func25(Infl), Imax), 
-                  control = list(maxit = 2000, parscale = c(10000, 
-                    0.01, 100))), silent = TRUE)
+                  control = list(maxit = 2000, parscale = parscale1
+                  )), silent = TRUE)
             }
             if (is.na(oppar[1]) == FALSE) {
                 if (oppar$convergence < 52) {
@@ -825,7 +1054,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                     print("Warning: positive optimization failed,using estimated parameters")
                     val <- c(Asym, K, Infl)
                     names(val)<-c("Asym", "K", "Infl")
-                     if (modno == 17) {
+                     if (modno >= 17 & modno < 18) {
                       	val <- c(Asym, Infl, M)
                       	names(val)<-c("Asym", "Infl", "M")
                      }
@@ -838,13 +1067,13 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   print("Warning: positive optimization failed,using estimated parameters")
    		  val <- c(Asym, K, Infl)
                   names(val)<-c("Asym", "K", "Infl")
-                  if (modno == 17) {
+                  if (modno >= 17 & modno < 18) {
                       	val <- c(Asym, Infl, M)
                       	names(val)<-c("Asym", "Infl", "M")
                   }
                 }
             }
-            if (modno == 17) {
+            if (modno >= 17 & modno < 18) {
                 Asym = val[1]
                 Infl = val[2]
                 M = val[3]
@@ -857,16 +1086,16 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 value <- c(Asym, K, Infl)
                 names(value) <- c("Asym", "K", "Infl")
             }
-            Kmax = K + (abs(K) * 0.25)
-            Kmin = K - (abs(K) * 0.25)
- 	    kcheck <- try({if (Kmin < 1e-05) 
-                Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
-            if (Kmin > (-1e-05)) 
-                Kmin = (-1e-05)
-            Imax = Imax - (abs(Imax - Infl) * 0.75)
-            Imin = Imin + (abs(Imin - Infl) * 0.75)
-            if (modno == 17) {
+            Kmax = K + (abs(K) * mediummult)
+            Kmin = K - (abs(K) * mediummult)
+ 	    if (Kmin < 1e-05 & Kmin >= 0 ) {
+ 	            Kmin = 1e-05
+ 	         } else {
+            if (Kmin > (-1e-05) & Kmin < 0) Kmin = (-1e-05)
+            				    }
+            Imax = Imax - (abs(Imax - Infl) * mediummult)
+            Imin = Imin + (abs(Imin - Infl) * mediummult)
+            if (modno >= 17 & modno < 18) {
             } else {
                 while (abs(Imax * Kmax) > 700) Imax = Imax * 
                   0.9
@@ -874,12 +1103,23 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   0.9
             }
             if( !is.na(Imax) ) {
-            if (Imax > maxIval) Imax <- maxIval - ((maxIval - min(xy$x)) * 0.95)}
-            Mmax = Mmax - (abs(Mmax - M) * 0.75)
-            Mmin = Mmin + (abs(Mmin - M) * 0.75)
+       		if (Imax > maxIval) Imax <- maxIval
+          	if(Imax < Infl) {
+          	   maxIval <- Infl + ((maxIval - min(xy$x)) * 0.05)
+          	   Imax <- maxIval  
+          	   }
+          	  		}
+          	  if( !is.na(Imin) ) {
+         	   if(Imin > Infl) Imin <- min(xy$x, na.rm=TRUE) 
+         	   if(Imin > Infl) {
+       		   Imin <- Infl - ((maxIval - min(xy$x)) * 0.05)
+          	   			}
+	    }
+            Mmax = Mmax - (abs(Mmax - M) * largemult)
+            Mmin = Mmin + (abs(Mmin - M) * largemult)
             pars <- 1
             is.na(pars) <- TRUE
-            if (modno == 17) {
+            if (modno >= 17 & modno < 18) {
                 try(pars <- as.vector(coef(nls(y ~ richards173(x, 
                   Asym, Infl, M), data = xyE, start = list(Asym = Asym, 
                   Infl = Infl, M = M), nls.control(maxiter = 1000, 
@@ -895,22 +1135,43 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   K = Kmax, I = Imax)))), silent = TRUE)
             }
             if (is.na(pars[1]) == FALSE) {
-                if (modno == 17) {
-                  value <- c(pars[1L], K, pars[2L], pars[3L], 
-                    (Asym * 0.05), K, pars[2L], tAsym)
+                if (modno >= 17 & modno < 18) {
+             if(!is.na(modelparams$twocomponent.x)) {
+	                subxyp <- subset(xyE$x, !is.na(xyE$x) )
+	                addRAsym <- richards(subxyp [length(subxyp )], pars[1L], pars[2L], pars[3L], pars[4L])
+	                value <- c(pars[1L], K, pars[2L], pars[3L], 
+	                    (Asym * 0.05)+addRAsym, K, pars[2L], tAsym)
+	                } else {
+	                value <- c(pars[1L], K, pars[2L], pars[3L], 
+	                    (Asym * 0.05), K, pars[2L], tAsym)
+            }           
                    names(value) <- c("Asym", "K", "Infl", "M", "RAsym", 
                   "Rk", "Ri", "RM")
                 } else {
-                  value <- c(pars[1L], pars[2L], pars[3L], M, 
-                    (Asym * 0.05), pars[2L], tAsym, M)
+             if(!is.na(modelparams$twocomponent.x)) {
+	                subxyp <- subset(xyE$x, !is.na(xyE$x) )
+	                addRAsym <- richards(subxyp [length(subxyp )], pars[1L], pars[2L], pars[3L], pars[4L])
+	                value <- c(pars[1L], pars[2L], pars[3L], M,
+	                    (Asym * 0.05)+addRAsym, pars[2L], tAsym, M)
+	                } else {
+	                value <- c(pars[1L], pars[2L], pars[3L], M,
+	                    (Asym * 0.05), pars[2L], tAsym, M)
+            }   
                    names(value) <- c("Asym", "K", "Infl", "M", "RAsym", 
                   "Rk", "Ri", "RM")
                 }
             } else {
                 if (modelparams$verbose == TRUE) 
                   print("Warning: nls failed for positive Richards model, using optim parameters")
-                value <- c(Asym, K, Infl, M, (Asym * 0.05), K, 
-                  tAsym, M)
+            if(!is.na(modelparams$twocomponent.x)) {
+            subxyp <- subset(xyE$x, !is.na(xyE$x) )
+            addRAsym <- richards(subxyp [length(subxyp )], Asym, K, Infl, M)
+            value <- c(Asym, K, Infl, M, 
+                (Asym * 0.05)+addRAsym, K, tAsym, M)
+            } else {
+            value <- c(Asym, K, Infl, M, 
+                (Asym * 0.05), K, tAsym, M)
+            }
                 names(value) <- c("Asym", "K", "Infl", "M", "RAsym", 
                   "Rk", "Ri", "RM")
             }
@@ -930,6 +1191,13 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   Infl)))^(1/M))) < 0) {
                   evl <- 1e+200
                 }, silent = T)
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
                 return(evl)
             }
             oppar = 0
@@ -945,15 +1213,16 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 return(repl)
             }
             if (modno == 18 | modno == 19) {
+            	Risav <- NA
                 testpar <- get(optvarnm, envir = globalenv())
                 testpar <- testpar[ names(testpar) %in% names(pnmodelparamsbounds)]
                 if (is.na(testpar[1])) {
-                  Amax = Asym + (abs(Asym) * 2.5)
-                  Amin = Asym - (abs(Asym) * 0.5)
-                  Kmax = K + (abs(K) * 0.5)
-                  Kmin = K - (abs(K) * 0.5)
-                  Imax = Infl + (abs(Infl) * 5)
-                  Imin = Infl + (abs(Infl) * -2.5)
+                  Amax = Asym + (abs(Asym) * largemult)
+                  Amin = Asym - (abs(Asym) * mediummult)
+                  Kmax = K + (abs(K) * mediummult)
+                  Kmin = K - (abs(K) * mediummult)
+                  Imax = Infl + (abs(Infl) * largemult)
+                  Imin = Infl + (abs(Infl) * -2*(largemult))
                   while (abs(Imax * Kmax) > 700) Imax = Imax * 
                     0.9
                   while (abs(Imin * Kmax) > 700) Imin = Imin * 
@@ -961,13 +1230,25 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   maxIval<- try(max(xyE$x, na.rm = TRUE) - 
                   	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
        		  if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE) 
-       		  if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
+            	 if( !is.na(Imax) ) {
+        		if (Imax > maxIval) Imax <- maxIval
+           	if(Imax < Infl) {
+           	   maxIval <- Infl + ((maxIval - min(xy$x)) * 0.05)
+           	   Imax <- maxIval  
+           	   }
+           	  		}
+           	  if( !is.na(Imin) ) {
+          	   if(Imin > Infl) Imin <- min(xy$x, na.rm=TRUE) 
+          	   if(Imin > Infl) {
+        		   Imin <- Infl - ((maxIval - min(xy$x)) * 0.05)
+           	   			}
+	    	}	
                   if (abs(M) < 0.1) {
-                    Mmax = 0.5
-                    Mmin = -0.5
+                    Mmax = largemult
+                    Mmin = -largemult
                   } else {
-                    Mmax = M + abs(M * 2)
-                    Mmin = M - abs(M * 2)
+                    Mmax = M + abs(M)
+                    Mmin = M - abs(M)
                   }
                   RAmax = Amax
                   RAmin = Amin
@@ -1019,16 +1300,46 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   RMmin = testpar$RMmin
                   maxIval<- try(max(xyE$x, na.rm = TRUE) - 
 		       (max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
-       		
                   maxRival<- try(max(xyL$x, na.rm = TRUE) - 
 		      (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
-		  if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
-                  if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
-                  if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
-                }
+		  if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)
+             if( !is.na(Imax) ) {
+       		if (Imax > maxIval) Imax <- maxIval
+          	if(Imax < Infl) {
+          	   maxIval <- Infl + ((maxIval - min(xy$x)) * 0.05)
+          	   Imax <- maxIval  
+          	   }
+          	  		}
+          	  if( !is.na(Imin) ) {
+         	   if(Imin > Infl) Imin <- min(xy$x, na.rm=TRUE) 
+         	   if(Imin > Infl) {
+       		   Imin <- Infl - ((maxIval - min(xy$x)) * 0.05)
+          	   			}
+	    }	    
+	     if( !is.na(Rimax) ) {
+       		if (Rimax > maxRival) Rimax <- maxRival
+          	if(Rimax < tAsym) {
+          	   maxRival <- tAsym + ((maxRival - min(xy$x)) * 0.95)
+          	   Rimax <- maxRival  
+          	   }
+          	  		}
+          	  if( !is.na(Rimin) ) {
+         	   if(Rimin > tAsym) Rimin <- min(xy$x, na.rm=TRUE) 
+         	   if(Rimin > tAsym) {
+       		   Rimin <- tAsym - ((maxIval - min(xy$x)) * 0.95)
+          	   			}
+             }	   			
+	    }	    
+	           if(is.na(Risav)) Risav <- tAsym
                 skel <- rep(list(1), 15)
-                exportparams <- c(Asym, K, Infl, M, (Asym * 0.05), 
-                  K, tAsym, M, modelparams$first.y, modelparams$x.at.first.y,
+                if(!is.na(modelparams$twocomponent.x)) {
+ 		            subxyp <- subset(xyE$x, !is.na(xyE$x) )
+		            addRAsym <- richards(subxyp [length(subxyp )], Asym, K, Infl, M)
+		            } else {
+		            addRAsym <- 0
+            	}
+                exportparams <- c(Asym, K, Infl, M, (Asym * 0.05) + addRAsym, 
+                  K, Risav, M, modelparams$first.y, modelparams$x.at.first.y,
                   modelparams$last.y, 
                   modelparams$x.at.last.y, modelparams$twocomponent.x, 
                   modelparams$verbose, modelparams$force4par)
@@ -1052,36 +1363,46 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   "Rimax", "RMmin", "RMmax")
     		valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
             		unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
-       		names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
-        	valexp[1:31] <- as.numeric( valexp[1:31] )
-        	valexp[13:15] <- as.logical( valexp[13:15] )
-    		assign(optvarnm, valexp, .GlobalEnv) 
+       		names( valexp[1:31] ) <- names( c(exportparams[1:15],exportparamsbounds) )
+        	valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
+        	valexp[14:15] <- as.logical( valexp[14:15] )
+        	if(is.numeric(modelparams$twocomponent.x)) {
+        	valexp[13] <- as.numeric( valexp[13] )
+        	} else {
+  		valexp[13] <- as.logical( valexp[13] )     	
+        	}
+  		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
+ 		assign(optvarnm, valexp, .GlobalEnv)
+ 		pnmodelparams<-valexp[1:15]
  	      }
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
-            kcheck <- try({if (Kmin < 1e-05 & Kmin > -1e-05) 
-               			 Kmin = 1e-05 * sign(Kmin)},silent = TRUE)
-	    if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+            if (Kmin < 1e-05 & Kmin >= 0 ) {
+ 	            Kmin = 1e-05
+ 	         } else {
+            if (Kmin > (-1e-05) & Kmin < 0) Kmin = (-1e-05)
+            				    }
             savminx <- min(xyE$x)
             savmaxx <- max(xyE$x)
+            parscale1 <- sapply(c(Asym, K, Infl, M),roundparscale)
             try(oppar <- optim(c(Asym, K, Infl, M), func1, method = "L-BFGS-B", 
                 lower = c(Amin, Kmin, Imin, Mmin), upper = c(Amax, 
                   func5(Infl, M), Imax, Mmax), control = list(maxit = 2000, 
-                  parscale = c(10000, 0.01, 100, 10))), silent = TRUE)
+                  parscale = parscale1)), silent = TRUE)
             if (is.na(oppar[1]) == TRUE) {
-                xyE <- moddata(xyE, min(xy$x, Intage))
+                xyE <- moddata(xyE, min(xy$x, Intage, taper.ends = taper.ends))[["indata"]]
                 try(oppar <- optim(c(Asym, K, Infl, M), func1, 
                   method = "L-BFGS-B", lower = c(Amin, Kmin, 
                     Imin, Mmin), upper = c(Amax, func5(Infl, 
                     M), Imax, Mmax), control = list(maxit = 2000, 
-                    parscale = c(10000, 0.01, 100, 10))), silent = TRUE)
+                    parscale = parscale1)), silent = TRUE)     
             } else {
                 if (oppar$convergence >= 52) {
-                  xyE <- moddata(xyE, min(xy$x, Intage))
+                  xyE <- moddata(xyE, min(xy$x, Intage, taper.ends = taper.ends))[["indata"]]
                   try(oppar <- optim(c(Asym, K, Infl, M), func1, 
                     method = "L-BFGS-B", lower = c(Amin, Kmin, 
                       Imin, Mmin), upper = c(Amax, func5(Infl, 
                       M), Imax, Mmax), control = list(maxit = 2000, 
-                      parscale = c(10000, 0.01, 100, 10))), silent = TRUE)
+                      parscale = parscale1)), silent = TRUE)     
                 } else {
                   evy1 <- sum((xyE$y - richards(xyE$x, as.numeric(oppar$par[1]), 
                     as.numeric(oppar$par[2]), as.numeric(oppar$par[3]), 
@@ -1093,13 +1414,13 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   if (evy1 > evy2 | !is.na(modelparams$twocomponent.x)) {
                     if (!is.na(modelparams$twocomponent.x)) 
                       savoppE <- oppar
-                    xyE <- moddata(xyE, min(xy$x, Intage))
+                    xyE <- moddata(xyE, min(xy$x, Intage, taper.ends = taper.ends))[["indata"]]
                     try(oppar <- optim(c(Asym, K, Infl, M), func1, 
                       method = "L-BFGS-B", lower = c(Amin, Kmin, 
                         Imin, Mmin), upper = c(Amax, func5(Infl, 
                         M), Imax, Mmax), control = list(maxit = 2000, 
-                        parscale = c(10000, 0.01, 100, 10))), 
-                      silent = TRUE)
+                        parscale = parscale1)), 
+                      silent = TRUE)     
                     if (!is.na(modelparams$twocomponent.x)) {
                       if (class(oppar)[1] == "try-error") {
                         oppar <- savoppE
@@ -1142,26 +1463,38 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             M = val[4]
             pars = 0
             is.na(pars) <- TRUE
-            Amax = Asym + (abs(Asym) * 2.5)
-            Amin = Asym - (abs(Asym) * 0.5)
-            Kmax = K + (abs(K) * 0.25)
-            Kmin = K - (abs(K) * 0.25)
- 	    kcheck <- try({if (Kmin < 1e-05) 
-                Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
-            if (Kmin > (-1e-05)) 
-            Kmin = (-1e-05)
-            Imax = Infl + (abs(Infl) * 5)
-            Imin = Infl + (abs(Infl) * -1.5)
+            Amax = Asym + diff(range(xy$y, na.rm = TRUE) * smallmult)
+            Amin = Asym - diff(range(xy$y, na.rm = TRUE) * smallmult)
+            Kmax = K + (abs(K) * smallmult)
+            Kmin = K - (abs(K) * smallmult)
+ 	    if (Kmin < 1e-05 & Kmin >= 0 ) {
+ 	            Kmin = 1e-05
+ 	         } else {
+            if (Kmin > (-1e-05) & Kmin < 0) Kmin = (-1e-05)
+            				    }
+            Imax = Infl + diff(range(xy$x, na.rm = TRUE)  * smallmult)
+            Imin = Infl + diff(range(xy$x, na.rm = TRUE)  * -smallmult)
             while (abs(Imax * Kmax) > 700) Imax = Imax * 0.9
             while (abs(Imin * Kmax) > 700) Imin = Imin * 0.9
-            if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
-            if (abs(M) < 0.1) {
-                Mmax = 0.25
-                Mmin = -0.25
+            	 if( !is.na(Imax) ) {
+        		if (Imax > maxIval) Imax <- maxIval
+           	if(Imax < Infl) {
+           	   maxIval <- Infl + ((maxIval - min(xy$x)) * 0.05)
+           	   Imax <- maxIval  
+           	   }
+           	  		}
+           	  if( !is.na(Imin) ) {
+          	   if(Imin > Infl) Imin <- min(xy$x, na.rm=TRUE) 
+          	   if(Imin > Infl) {
+        		   Imin <- Infl - ((maxIval - min(xy$x)) * 0.05)
+           	   			}
+	    	}	
+              if (abs(M) < 0.1) {
+                Mmax = mediummult
+                Mmin = -mediummult
             } else {
-                Mmax = M + abs(M * 0.75)
-                Mmin = M - abs(M * 0.75)
+                Mmax = M + abs(M * largemult)
+                Mmin = M - abs(M * largemult)
             }
             try(pars <- as.vector(coef(nls(y ~ richards(x, Asym, 
                 K, Infl, M), data = xyE, start = list(Asym = Asym, 
@@ -1170,15 +1503,29 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 K = Kmin, Infl = Imin, M = Mmin), upper = list(Asym = Amax, 
                 K = Kmax, I = Imax, M = Mmax)))), silent = TRUE)
             if (is.na(pars[1]) == FALSE) {
-                value <- c(pars[1L], pars[2L], pars[3L], pars[4L], 
-                  (Asym * 0.05), pars[2L], tAsym, pars[4L])
+            if(!is.na(modelparams$twocomponent.x)) {
+	                subxyp <- subset(xyE$x, !is.na(xyE$x) )
+	                addRAsym <- richards(subxyp [length(subxyp )], pars[1L], pars[2L], pars[3L], pars[4L])
+	                value <- c(pars[1L], pars[2L], pars[3L], pars[4L], 
+	                    (Asym * 0.05)+addRAsym, pars[2L], tAsym, pars[4L])
+	                } else {
+	                value <- c(pars[1L], pars[2L], pars[3L], pars[4L], 
+	                    (Asym * 0.05), pars[2L], tAsym, pars[4L])
+            }
                 names(value) <- c("Asym", "K", "Infl", "M", "RAsym", 
                   "Rk", "Ri", "RM")
             } else {
                 if (modelparams$verbose == TRUE) 
                   print("Warning: nls failed for positive Richards model, using optim parameters (if no optimization occured, using estimated parameters)")
-                value <- c(Asym, K, Infl, M, (Asym * 0.05), K, 
-                  tAsym, M)
+ 	    if(!is.na(modelparams$twocomponent.x)) {
+            subxyp <- subset(xyE$x, !is.na(xyE$x) )
+            addRAsym <- richards(subxyp [length(subxyp )], Asym, K, Infl, M)
+            value <- c(Asym, K, Infl, M, 
+                (Asym * 0.05)+addRAsym, K, tAsym, M)
+            } else {
+            value <- c(Asym, K, Infl, M, 
+                (Asym * 0.05), K, tAsym, M)
+            }
                 names(value) <- c("Asym", "K", "Infl", "M", "RAsym", 
                   "Rk", "Ri", "RM")
             }
@@ -1192,12 +1539,20 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         if (is.na(modelparams$twocomponent.x) == FALSE) 
             xyL <- subset(xy, xy$x > Intage)
         if (nrow(xyL) < 3 | modno == 12 | modno == 20 | modno == 
-            32 | modno == 19 | modno == 17 | modelparams$force4par == TRUE) {
+            32 | modno == 19 | modelparams$force4par == TRUE) {
             if (nrow(xyL) < 3) {
                 if (modelparams$verbose == TRUE) 
                   print("Warning: too few distinct input values to fit the negative Richards model, defaulting to RAsym= 5% of peak mass, Rk=k, Ri=age at peak, RM=M")
+            counterR <- 0
+            if(!is.na(modelparams$twocomponent.x)) {
+            subxyp <- subset(xyE$x, !is.na(xyE$x) )
+            addRAsym <- richards(subxyp [length(subxyp )], value[1L], value[2L], value[3L], value[4L])
+            value <- c(value[1L], value[2L], value[3L], value[4L], 
+                (Asym * 0.05)+addRAsym, value[2L], tAsym, value[4L])
+            } else {
             value <- c(value[1L], value[2L], value[3L], value[4L], 
                 (Asym * 0.05), value[2L], tAsym, value[4L])
+            }
             names(value) <- c("Asym", "K", "Infl", "M", "RAsym", 
                 "Rk", "Ri", "RM")
             }
@@ -1218,7 +1573,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 inputmin <- c(val1$RAmin, val1$Rkmin, val1$Rimin)
                 inputmax <- c(val1$RAmax, val1$Rkmax, val1$Rimax)
             }
-            if (modno == 3 | modno == 23) {
+            if (modno == 3 | modno == 23 | modno == 17.1) {
                 val1 <- data.frame(value[7L], value[8L])
                 names(val1) <- c("Ri", "RM")
                 inputmin <- c(val1$Rimin, val1$RMmin)
@@ -1240,7 +1595,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 val1 <- data.frame(value[5L], value[7L], value[8L])
                 names(val1) <- c("RAsym", "Ri", "RM")
                 inputmin <- c(val1$RAmin, val1$Rimin, val1$RMmin)
-                inputmax <- c(val1$RAmax, val1$Rimax, val1$RMmax)
+                inputmax <- c(val1$RAmax, val1$Rimax, val1$RMmax)               
             }
             if (modno == 7 | modno == 27) {
                 val1 <- data.frame(value[6L], value[7L], value[8L])
@@ -1260,7 +1615,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 inputmin <- c(val1$Rkmin, val1$RMmin)
                 inputmax <- c(val1$Rkmax, val1$RMmax)
             }
-            if (modno == 10 | modno == 30) {
+            if (modno == 10 | modno == 30 | modno == 17.3) {
                 val1 <- data.frame(value[7L])
                 names(val1) <- c("Ri")
                 inputmin <- c(val1$Rimin)
@@ -1274,7 +1629,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             }
             if (modno == 12 | modno == 32 | modno == 19) {
             }
-            if (modno == 13 | modno == 33) {
+            if (modno == 13 | modno == 33 | modno == 17.2) {
                 val1 <- data.frame(value[5L], value[7L])
                 names(val1) <- c("RAsym", "Ri")
                 inputmin <- c(val1$RAmin, val1$Rimin)
@@ -1297,12 +1652,6 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 names(val1) <- c("Rk")
                 inputmin <- c(val1$Rkmin)
                 inputmax <- c(val1$Rkmax)
-            }
-            if (modno == 17) {
-                val1 <- data.frame(value[5L],value[7L],value[8L])
-                names(val1) <- c("RAsym", "Ri", "RM")
-                inputmin <- c(val1$RAmin, val1$Rimin, val1$RMmin)
-                inputmax <- c(val1$RAmax, val1$Rimax, val1$RMmax)
             }
             if (modno == 20) {
             }
@@ -1328,31 +1677,63 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   xyL$y <- xyL$y - (min(abs(xyL$y)) * signvalmin)
                 }
             }
-            val2 <- trnsfrm(xyL, min(xy$x), Intage)
+            val2 <- trnsfrm(xyL, min(xy$x), Intage, taper.ends = taper.ends)
             names(val2) <- c("RAsym", "Rk", "Ri", "RM")
             RAsym <- val2[1]
             Rk <- val2[2]
             Ri <- val2[3]
             RM <- val2[4]
+            counterR <- 0
+            try(if(RAsym > RAmax & modno != 18 & modno != 19 ) {
+            if(pntbndserr == TRUE) stop("Upper bounds for RAsym are too low: RAsym > RAmax. If you wish bounds to be reestimated
+          	automatically, specify bounds.error = FALSE in modpar")         
+            cat("WARNING: Upper bounds for RAsym are too low: RAsym > RAmax. These will be adjusted. Alternatively
+            	try runing modpar with option width.bounds set to more than 1 \n")
+            RAmax <- as.numeric(RAsym + (RAsym * largemult))
+            		}, silent = TRUE)
+            try(if(RAsym < RAmin & modno != 18 & modno != 19) {
+            if(pntbndserr == TRUE) stop("Lower bounds for RAsym are too high:  RAsym < RAmin. If you wish bounds to be reestimated
+          	automatically, specify bounds.error = FALSE in modpar")         
+            cat("WARNING: Lower bounds for RAsym are too high: RAsym < RAmin. These will be adjusted. Alternatively
+            	try runing modpar with option width.bounds set to more than 1 \n")
+            RAmin <- as.numeric(RAsym + (RAsym * -largemult))
+            		}, silent = TRUE)
+            try(if(Ri > Rimax & modno != 18 & modno != 19) {
+            if(pntbndserr == TRUE) stop("Upper bounds for RAsym are too low:  Ri  > Rimax. If you wish bounds to be reestimated
+           	automatically, specify bounds.error = FALSE in modpar")         
+            cat("WARNING: Upper bounds for Ri are too low: Ri  > Rimax. These will be adjusted. Alternatively
+            	try runing modpar with option width.bounds set to more than 1 \n")
+            Rimax <- as.numeric(Ri + (Ri * largemult))
+            		}, silent = TRUE)
+            try(if(Ri < Rimin & modno != 18 & modno != 19) {
+            if(pntbndserr == TRUE) stop("Lower bounds for RAsym are too high:  Ri < Rimin. If you wish bounds to be reestimated
+           	automatically, specify bounds.error = FALSE in modpar")         
+            cat("WARNING: Lower bounds for Ri are too high: Ri < Rimin. These will be adjusted. Alternatively
+            	try runing modpar with option width.bounds set to more than 1 \n")
+            Rimin <- as.numeric(Ri + (Ri * -largemult))
+        		}, silent = TRUE)
             if (modno == 18 | modno == 19) {
               if(modno == 18) {
-                RAmax = RAsym + (abs(RAsym) * 2.5)
-                RAmin = RAsym - (abs(RAsym) * 0.5)
-                Rkmax = Rk + (abs(Rk) * 0.5)
-                Rkmin = Rk - (abs(Rk) * 0.5)
-                Rimax = Ri + (abs(Ri) * 5)
-                Rimin = Ri + (abs(Ri) * -2.5)
+                RAmax = RAsym + diff(range(xy$y, na.rm = TRUE) * largemult)
+                RAmin = RAsym - diff(range(xy$y, na.rm = TRUE) * largemult)
+                Rimax = Ri + diff(range(xy$x, na.rm = TRUE)  * largemult*2)
+                Rimin = Ri + diff(range(xy$x, na.rm = TRUE)  * -largemult)
                 while (abs(Rimax * Rkmax) > 700) Rimax = Rimax * 
                   0.9
                 while (abs(Rimin * Rkmax) > 700) Rimin = Rimin * 
                   0.9
-                if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
+                if( !is.na(Rimax) ) {
+ 		        if (Rimax > maxRival) Rimax <- maxRival
+ 		        Risav <- tAsym
+ 		        if(Rimax < tAsym) Risav <- maxRival - ((Rimax - min(xy$x, na.rm=TRUE)) * 0.95)
+ 		        if(Rimin > tAsym) Risav <- min(xy$x, na.rm=TRUE) + ((Rimax - min(xy$x, na.rm=TRUE)) * 0.95)
+       	     				  }
                 if (abs(RM) < 0.1) {
-                  RMmax = 0.5
-                  RMmin = -0.5
+                  RMmax = mediummult
+                  RMmin = -mediummult
                 } else {
-                  RMmax = RM + abs(RM * 2)
-                  RMmin = RM - abs(RM * 2)
+                  RMmax = RM + abs(RM*mediummult)
+                  RMmin = RM - abs(RM*mediummult)
                 }
                } else {
                RAmax = Amax
@@ -1391,10 +1772,17 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   "Rimax", "RMmin", "RMmax")
      		valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
              		unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
-        		names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
-         	valexp[1:31] <- as.numeric( valexp[1:31] )
-         	valexp[13:15] <- as.logical( valexp[13:15] )
-    		assign(optvarnm, valexp, .GlobalEnv) 
+        		names( valexp[1:31] ) <- names( c(exportparams[1:15],exportparamsbounds) )
+        	valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
+        	valexp[14:15] <- as.logical( valexp[14:15] )
+        	if(is.numeric(modelparams$twocomponent.x)) {
+        	valexp[13] <- as.numeric( valexp[13] )
+        	} else {
+  		valexp[13] <- as.logical( valexp[13] )     	
+        	}
+      		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
+    		assign(optvarnm, valexp, .GlobalEnv)
+    		pnmodelparams<-valexp[1:15]
 		modelparams <- exportparams
                 modelparamsbounds <- exportparamsbounds
                 assign(".tmpposnegfile", 0, envir = .GlobalEnv)
@@ -1410,7 +1798,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 inputmin <- c(RAmin, Rkmin, Rimin)
                 inputmax <- c(RAmax, Rkmax, Rimax)
             }
-            if (modno == 3 | modno == 23) {
+            if (modno == 3 | modno == 23 | modno == 17.1) {
                 Rk <- modelparams$Rk
                 RAsym <- modelparams$RAsym
                 inputval <- c(Ri, RM)
@@ -1457,7 +1845,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 inputmin <- c(Rkmin, RMmin)
                 inputmax <- c(Rkmax, RMmax)
             }
-            if (modno == 10 | modno == 30) {
+            if (modno == 10 | modno == 30 | modno == 17.3) {
                 Rk <- modelparams$Rk
                 RAsym <- modelparams$RAsym
                 RM <- modelparams$RM
@@ -1476,7 +1864,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             if (modno == 12 | modno == 32 | modno == 19) {
                 print("error in model 12/32 code - please report")
             }
-            if (modno == 13 | modno == 33) {
+            if (modno == 13 | modno == 33 | modno == 17.2) {
                 Rk <- modelparams$Rk
                 RM <- modelparams$RM
                 inputval <- c(RAsym, Ri)
@@ -1520,25 +1908,26 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   value1$Ri <- max(xy$x) - value1$Ri
                 }
                 val1 <- (data.frame(t(val1)))
-                if (is.null(val1$RAsym) == FALSE) 
+                if (length(val1$RAsym) == 1) 
                   value1$RAsym <- val1$RAsym
-                if (is.null(val1$Rk) == FALSE) 
+                if (length(val1$Rk) == 1) 
                   value1$Rk <- val1$Rk
-                if (is.null(val1$Ri) == FALSE) 
+                if (length(val1$Ri) == 1) 
                   value1$Ri <- val1$Ri
-                if (is.null(val1$RM) == FALSE) 
+                if (length(val1$RM) == 1)
                   value1$RM <- val1$RM
-                if (tmpposnegfile == 0 & is.null(val1$RM) == 
-                  FALSE) 
+                if (tmpposnegfile == 0 & length(val1$RM) == 
+                  1) 
                   value1$RM <- 1
                 RAsym <- value1$RAsym
                 Rk <- value1$Rk
                 Ri <- value1$Ri
                 RM <- value1$RM
-                if (modno == 17) {
+                if (modno >= 17 & modno < 18) {
+                	if(modno == 17.3 | modno == 17.4) RM <- M
                   func4 <- function(x, Ri, RM) {
                     x = x + (0 + (0+0i))
-                    (1 + exp(Ri - x)/M)
+                    (1 + exp(Ri - x)/RM)
                   }
                   P <- Re(func4(xyL$x, Ri, RM))
                 } else {
@@ -1550,15 +1939,31 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 }
                 P[is.na(P)] <- 1e-290 * pnmodelparams$RAsym
                 P[P == Inf] <- 1e-290 * pnmodelparams$RAsym
+                if(modno == 17.2 | modno ==17.4) {
+                y1 <- Asym/P
+                }else{
                 y1 <- RAsym/P
+                }
                 evl <- sum((xyL$y - y1)^2)
-                if (evl == Inf) 
+   		if(!is.na(evl)){
+                if (evl == Inf) {
                   evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
                 options(warn = -1)
                 try(if (min(Im(as.complex(1 + RM * exp(-Rk * 
                   ((max(xyL$x)) - Ri)))^(1/RM))) < 0) {
                   evl <- 1e+290
                 }, silent = TRUE)
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
                 options(warn = 0)
                 return(evl)
             }
@@ -1567,12 +1972,14 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             	} else {
             	chinputval <- data.frame(t(inputval))
             	chinputmax <- data.frame(t(inputmax))
+      	  	if(length(chinputval) == 1) chinputval <- data.frame(inputval)
+          	if(length(chinputmax) == 1) chinputmax <- data.frame(inputmax)
             	names(chinputval) <- names(inputval)
             	chmx<-paste(substr(names(inputval),1,2),"max","")
             	chmx<-sub(" ","",chmx)
             	chmx<-sub(" ","",chmx)
             	names(chinputmax) <- chmx
-            	if (is.null(chinputval$Ri) == FALSE) {
+            	if (length(chinputval$Ri) == 1) {
             		if (chinputval$Ri >= chinputmax$Rimax) 
             			chinputval$Ri <- chinputmax$Rimax - ((chinputmax$Rimax - min(xy$x, na.rm=TRUE)) * 0.95)
            	 }
@@ -1581,7 +1988,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             is.na(oppar) <- TRUE
             savminx <- min(xyL$x)
             savmaxx <- max(xyL$x)
-            xyL <- moddata(xyL, min(xy$x, Intage))
+            xyL <- moddata(xyL, min(xy$x, Intage, taper.ends = taper.ends))[["indata"]]
             try(oppar <- optim(inputval, func2, method = "L-BFGS-B", 
                 lower = inputmin, upper = inputmax, control = list(maxit = 2000)), 
                 silent = TRUE)
@@ -1591,13 +1998,13 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             try(evy2L <- sum((xyL$y - richards(xyL$x, inputval[1], 
                 inputval[2], inputval[3], inputval[4]))^2), silent = TRUE)
             if (is.na(oppar[1]) == TRUE) {
-                xyL <- moddata(xyL, min(xy$x, Intage))
+                xyL <- moddata(xyL, min(xy$x, Intage, taper.ends = taper.ends))[["indata"]]
                 try(oppar <- optim(inputval, func2, method = "L-BFGS-B", 
                   lower = inputmin, upper = inputmax, control = list(maxit = 2000)), 
                   silent = TRUE)
             } else {
                 if (oppar$convergence >= 52) {
-                  xyL <- moddata(xyL, min(xy$x, Intage))
+                  xyL <- moddata(xyL, min(xy$x, Intage, taper.ends = taper.ends))[["indata"]]
                   try(oppar <- optim(inputval, func2, method = "L-BFGS-B", 
                     lower = inputmin, upper = inputmax, control = list(maxit = 2000)), 
                     silent = TRUE)
@@ -1612,7 +2019,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   if (evy1L > evy2L | !is.na(modelparams$twocomponent.x)) {
                     if (!is.na(modelparams$twocomponent.x)) 
                       savoppL <- oppar
-                    xyL <- moddata(xyL, min(xy$x, Intage))
+                    xyL <- moddata(xyL, min(xy$x, Intage, taper.ends = taper.ends))[["indata"]]
                     try(oppar <- optim(inputval, func2, method = "L-BFGS-B", 
                       lower = inputmin, upper = inputmax, control = list(maxit = 2000)), 
                       silent = TRUE)
@@ -1634,40 +2041,58 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             if (is.na(oppar[1]) == FALSE) {
                 if (oppar$convergence < 52) {
                   val1 <- data.frame(t(c(oppar$par)))
+                  names(val1)<-names(oppar$par)
                 } else {
                   if (modelparams$verbose == TRUE) 
                     print("Warning: negative optimization failed using default parameters (straight line)")
-                  val1 <- data.frame((Asym * 0.05), value[2L], 
-                    tAsym, value[4L])
+                   if(!is.na(modelparams$twocomponent.x)) {
+		              subxyp <- subset(xyE$x, !is.na(xyE$x) )
+		              addRAsym <- richards(subxyp [length(subxyp )], value[1L], value[2L], value[3L], value[4L])
+		              val1 <- data.frame(RAsym=(Asym * 0.05)+addRAsym, Rk=value[2L], Ri= tAsym, RM=value[4L])
+		              } else {
+		              val1 <- data.frame(RAsym=(Asym * 0.05),Rk=value[2L], Ri= tAsym, RM= value[4L])
+            	  }
                   inputval <- data.frame(t(inputval))
-                  if (is.null(inputval$RAsym) == TRUE) 
+                  if (length(inputval$RAsym) == 0) 
                     val1[1] = NA
-                  if (is.null(inputval$Rk) == TRUE) 
+                  if (length(inputval$Rk) == 0) 
                     val1[2] = NA
-                  if (is.null(inputval$Ri) == TRUE) 
+                  if (length(inputval$Ri) == 0) 
                     val1[3] = NA
-                  if (is.null(inputval$RM) == TRUE) 
+                  if (length(inputval$RM) == 0) 
                     val1[4] = NA
+          	  val1<-as.numeric(val1)
                   names(val1) <- c("RAsym", "Rk", "Ri", "RM")
+                  val1nms <- names(val1[!is.na(val1)])
                   val1 <- val1[!is.na(val1)]
                   val1 <- data.frame(t(val1))
+                  names(val1) <- val1nms
                 }
             } else {
                 if (modelparams$verbose == TRUE) 
                   print("Warning: negative optimization failed using default parameters (straight line)")
-                val1 <- c((Asym * 0.05), value[2L], tAsym, value[4L])
+                  if(!is.na(modelparams$twocomponent.x)) {
+		              subxyp <- subset(xyE$x, !is.na(xyE$x) )
+		              addRAsym <- richards(subxyp [length(subxyp )], Asym,value[2L],  tAsym, value[4L])
+		              val1 <- data.frame(RAsym=(Asym * 0.05)+addRAsym, Rk=value[2L], Ri= tAsym, RM=value[4L])
+		              } else {
+		              val1 <- data.frame(RAsym=(Asym * 0.05),Rk=value[2L], Ri= tAsym, RM= value[4L])
+            	  }
                 inputval <- data.frame(t(inputval))
-                if (is.null(inputval$RAsym) == TRUE) 
+                if (length(inputval$RAsym) == 0) 
                   val1[1] = NA
-                if (is.null(inputval$Rk) == TRUE) 
+                if (length(inputval$Rk) == 0) 
                   val1[2] = NA
-                if (is.null(inputval$Ri) == TRUE) 
+                if (length(inputval$Ri) == 0) 
                   val1[3] = NA
-                if (is.null(inputval$RM) == TRUE) 
+                if (length(inputval$RM) == 0) 
                   val1[4] = NA
+                val1<-as.numeric(val1)
                 names(val1) <- c("RAsym", "Rk", "Ri", "RM")
-                val1 <- val1[!is.na(val1)]
-                val1 <- data.frame(t(val1))
+                val1nms <- names(val1[!is.na(val1)])
+		                  val1 <- val1[!is.na(val1)]
+		                  val1 <- data.frame(t(val1))
+                  names(val1) <- val1nms
             }
 		parload <- get(optvarnm, envir = globalenv())
                 pnmodelparamsbounds <- parload[ names(parload) %in% names(pnmodelparamsbounds)]
@@ -1677,33 +2102,30 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             if (modno != 20 & modno != 32) {
                 value <- value[1:4]
             } else {
-                if (modno != 17) {
+                if (modno < 17 | modno >= 18) {
                 value <- value[1:3]
                 } else {
                   value <- data.frame(value[1], value[3], value[4])
                 }
             }
         } else {
-            if (is.null(val1$RAsym) == FALSE) {
+            if (length(val1$RAsym) == 1) {
                 RAsym <- val1$RAsym
             } else {
                 RAsym <- modelparams$RAsym
             }
-            if (is.null(val1$Rk) == FALSE) 
-                Rk <- {
-                  val1$Rk
+            if (length(val1$Rk) == 1) {
+                Rk <- val1$Rk
                 } else {
                 Rk <- modelparams$Rk
             }
-            if (is.null(val1$Ri) == FALSE) 
-                Ri <- {
-                  val1$Ri
+            if (length(val1$Ri) == 1) {
+                Ri <- val1$Ri
                 } else {
                 Ri <- modelparams$Ri
             }
-            if (is.null(val1$RM) == FALSE) 
-                RM <- {
-                  val1$RM
+            if (length(val1$RM) == 1) {
+                RM <-   val1$RM
                 } else {
                 RM <- modelparams$RM
             }
@@ -1719,38 +2141,40 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             Rk = value[6]
             Ri = value[7]
             RM = value[8]
-            if (is.null(val1$RAsym) == FALSE) {
+       	    value<-sapply(value,function(x) list(x))
+            if (length(val1$RAsym) == 1) {
                 RAsym <- val1$RAsym
             } else {
                 value[5] <- NA
             }
-            if (is.null(val1$Rk) == FALSE) {
+            if (length(val1$Rk) == 1) {
                 Rk <- val1$Rk
             } else {
                 value[6] <- NA
             }
-            if (is.null(val1$Ri) == FALSE) {
+            if (length(val1$Ri) == 1) {
                 Ri <- val1$Ri
             } else {
                 value[7] <- NA
             }
-            if (is.null(val1$RM) == FALSE) {
+            if (length(val1$RM) == 1) {
                 RM <- val1$RM
             } else {
                 value[8] <- NA
             }
+            value<-unlist(value)
             if (modno > 19) 
                 value[4] <- NA
-            if (modno == 17) 
+            if (modno >= 17 & modno < 18) 
                 value[2] <- NA
-            savname <- names(value[, !is.na(value)])
-            value <- data.frame(value[, !is.na(value)])
+            savname <- names(value[!is.na(value)])
+            value <- data.frame(t(value[!is.na(value)]))
             names(value) <- savname
             if (modno > 19) {
                 posmin <- c(Amin, Kmin, Imin)
                 posmax <- c(Amax, Kmax, Imax)
             } else {
-                if (modno == 17) {
+                if (modno >= 17 & modno < 18) {
                   posmin <- c(Amin, Imin, Mmin)
                   posmax <- c(Amax, Imax, Mmax)
                 } else {
@@ -1768,21 +2192,21 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                     Rk = modelparams$Rk, Ri = modelparams$Ri, 
                     RM = modelparams$RM)
                   val3 <- (data.frame(t(Rparams)))
-                  if (is.null(val3$Asym) == FALSE) 
+                  if (length(val3$Asym) == 1) 
                     val2$Asym <- val3$Asym
-                  if (is.null(val3$K) == FALSE) 
+                  if (length(val3$K) == 1) 
                     val2$K <- val3$K
-                  if (is.null(val3$Infl) == FALSE) 
+                  if (length(val3$Infl) == 1) 
                     val2$Infl <- val3$Infl
-                  if (is.null(val3$M) == FALSE) 
+                  if (length(val3$M) == 1) 
                     val2$M <- val3$M
-                  if (is.null(val3$RAsym) == FALSE) 
+                  if (length(val3$RAsym) == 1) 
                     val2$RAsym <- val3$RAsym
-                  if (is.null(val3$Rk) == FALSE) 
+                  if (length(val3$Rk) == 1) 
                     val2$Rk <- val3$Rk
-                  if (is.null(val3$Ri) == FALSE) 
+                  if (length(val3$Ri) == 1) 
                     val2$Ri <- val3$Ri
-                  if (is.null(val3$RM) == FALSE) 
+                  if (length(val3$RM) == 1) 
                     val2$RM <- val3$RM
                   Asym <- val2$Asym
                   K <- val2$K
@@ -1815,19 +2239,26 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                     Ri = modelparams$Ri
                   }
                   options(warn = -1)
+                  if(modno == 17.2 | modno == 17.4) RAsym <- Asym
+                  if(modno == 17.3| modno == 17.4) RM <- M              
                   if (Re(as.complex(1 + M[1] * exp(-K[1] * (xy$x - 
                     Infl[1])))) < 0) {
                     if (Re(as.complex(1 + RM[1] * exp(-Rk[1] * (xy$x - 
                       Ri[1])))) < 0) {
-                      if (modno == 17) {
-                        y1 <- SSposnegRichardsF17(xy$x, Asym, 
+                      if (modno >= 17 & modno < 18) {
+                            y1 <- SSposnegRichardsF17(xy$x, Asym, 
                           Infl, M, RAsym, Ri, RM)
                         y1[is.na(y1)] <- 1e-290 * pnmodelparams$RAsym
                         y1[y1 == Inf] <- 1e-290 * pnmodelparams$RAsym
                         evl <- sum((xy$y - y1)^2)
-                        if (evl == Inf) 
-                          evl <- 1e+290
-                        try(if (min(Im(SSposnegRichardsF17((0:max(xy$x)), 
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
+                	try(if (min(Im(SSposnegRichardsF17((0:max(xy$x)), 
                           Asym, Infl, M, RAsym, Ri, RM)) < 0)) {
                           evl <- 1e+200
                         }, silent = TRUE)
@@ -1837,24 +2268,34 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                         y1[is.na(y1)] <- 1e-290 * pnmodelparams$RAsym
                         y1[y1 == Inf] <- 1e-290 * pnmodelparams$RAsym
                         evl <- sum((xy$y - y1)^2)
-                        if (evl == Inf) 
-                          evl <- 1e+290
-                        try(if (min(Im(SSposnegRichardsFMRM((0:max(xy$x)), 
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
+                try(if (min(Im(SSposnegRichardsFMRM((0:max(xy$x)), 
                           Asym, K, Infl, M, RAsym, Rk, Ri, RM)) < 
                           0)) {
                           evl <- 1e+200
                         }, silent = TRUE)
                       }
                     } else {
-                      if (modno == 17) {
+                      if (modno >= 17 & modno < 18) {
                         y1 <- SSposnegRichardsF17(xy$x, Asym, 
                           Infl, M, RAsym, Ri, RM)
                         y1[is.na(y1)] <- 1e-290 * pnmodelparams$RAsym
                         y1[y1 == Inf] <- 1e-290 * pnmodelparams$RAsym
                         evl <- sum((xy$y - y1)^2)
-                        if (evl == Inf) 
-                          evl <- 1e+290
-                        try(if (min(Im(SSposnegRichardsF17((0:max(xy$x)), 
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
+                	try(if (min(Im(SSposnegRichardsF17((0:max(xy$x)), 
                           Asym, Infl, M, RAsym, Ri, RM)) < 0)) {
                           evl <- 1e+200
                         }, silent = TRUE)
@@ -1864,9 +2305,14 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                         y1[is.na(y1)] <- 1e-290 * pnmodelparams$RAsym
                         y1[y1 == Inf] <- 1e-290 * pnmodelparams$RAsym
                         evl <- sum((xy$y - y1)^2)
-                        if (evl == Inf) 
-                          evl <- 1e+290
-                        try(if (min(Im(SSposnegRichardsFM((0:max(xy$x)), 
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
+                try(if (min(Im(SSposnegRichardsFM((0:max(xy$x)), 
                           Asym, K, Infl, M, RAsym, Rk, Ri, RM)) < 
                           0)) {
                           evl <- 1e+200
@@ -1876,15 +2322,20 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   } else {
                     if (Re(as.complex(1 + RM[1] * exp(-Rk[1] * (xy$x - 
                       Ri[1])))) < 0) {
-                      if (modno == 17) {
+                      if (modno >= 17 & modno < 18) {
                         y1 <- SSposnegRichardsF17(xy$x, Asym, 
                           Infl, M, RAsym, Ri, RM)
                         y1[is.na(y1)] <- 1e-290 * pnmodelparams$RAsym
                         y1[y1 == Inf] <- 1e-290 * pnmodelparams$RAsym
                         evl <- sum((xy$y - y1)^2)
-                        if (evl == Inf) 
-                          evl <- 1e+290
-                        try(if (min(Im(SSposnegRichardsF17((0:max(xy$x)), 
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
+                try(if (min(Im(SSposnegRichardsF17((0:max(xy$x)), 
                           Asym, Infl, M, RAsym, Ri, RM)) < 0)) {
                           evl <- 1e+200
                         }, silent = TRUE)
@@ -1894,24 +2345,34 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                         y1[is.na(y1)] <- 1e-290 * pnmodelparams$RAsym
                         y1[y1 == Inf] <- 1e-290 * pnmodelparams$RAsym
                         evl <- sum((xy$y - y1)^2)
-                        if (evl == Inf) 
-                          evl <- 1e+290
-                        try(if (min(Im(SSposnegRichardsFRM((0:max(xy$x)), 
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}    
+                try(if (min(Im(SSposnegRichardsFRM((0:max(xy$x)), 
                           Asym, K, Infl, M, RAsym, Rk, Ri, RM)) < 
                           0)) {
                           evl <- 1e+200
                         }, silent = TRUE)
                       }
                     } else {
-                      if (modno == 17) {
+                      if (modno >= 17 & modno < 18) {
                         y1 <- SSposnegRichardsF17(xy$x, Asym, 
                           Infl, M, RAsym, Ri, RM)
                         y1[is.na(y1)] <- 1e-290 * pnmodelparams$RAsym
                         y1[y1 == Inf] <- 1e-290 * pnmodelparams$RAsym
                         evl <- sum((xy$y - y1)^2)
-                        if (evl == Inf) 
-                          evl <- 1e+290
-                        try(if (min(Im(SSposnegRichardsF17((0:max(xy$x)), 
+    		if(!is.na(evl)){
+                 if (evl == Inf) {
+                   evl <- 1e+290
+                 	} else {
+                   evl <- 1e+290
+                 		}
+               	}
+                	try(if (min(Im(SSposnegRichardsF17((0:max(xy$x)), 
                           Asym, Infl, M, RAsym, Ri, RM)) < 0)) {
                           evl <- 1e+200
                         }, silent = TRUE)
@@ -1921,9 +2382,14 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                         y1[is.na(y1)] <- 1e-290 * pnmodelparams$RAsym
                         y1[y1 == Inf] <- 1e-290 * pnmodelparams$RAsym
                         evl <- sum((xy$y - y1)^2)
-                        if (evl == Inf) 
-                          evl <- 1e+290
-                        try(if (min(Im(SSposnegRichardsF((0:max(xy$x)), 
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	}
+                	try(if (min(Im(SSposnegRichardsF((0:max(xy$x)), 
                           Asym, K, Infl, M, RAsym, Rk, Ri, RM)) < 
                           0)) {
                           evl <- 1e+200
@@ -1931,11 +2397,14 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                       }
                     }
                   }
-                  if (abs(evl) == Inf) 
-                    evl <- 1e+290
-                  if (is.na(evl) == TRUE) 
-                    evl <- 1e+290
-                  options(warn = 0)
+   		if(!is.na(evl)){
+                if (evl == Inf) {
+                  evl <- 1e+290
+                	} else {
+                  evl <- 1e+290
+                		}
+               	} 
+                options(warn = 0)
                   return(evl)
                 }
                 savname <- names(value)
@@ -2007,6 +2476,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   dnbnds$RM = RM - abs(pnmodelparamsbounds$RMmax - 
                     pnmodelparamsbounds$RMmin) * 0.2
                 }
+                options(warn = 0)
                 cnt <- 0
                 finalpars <- 0
                 is.na(finalpars) <- TRUE
@@ -2018,29 +2488,34 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   if (cnt > 1) {
                     if ("Rk" %in% names(value)) {
                       if (cnt == 2) {
+                      options(warn=-1)
                         value$Rk <- pnmodelparamsbounds$Rkmin
                         dnbnds$Rk <- pnmodelparamsbounds$Rkmin - 
                           abs(pnmodelparams$Rk) * 0.5
                         upbnds$Rk <- pnmodelparamsbounds$Rkmin + 
                           abs(pnmodelparams$Rk) * 0.5
                         repoptm <- 1
+                        options(warn=0)
                       }
                     } else {
                       cnt = cnt + 1
                     }
                     if ("Rk" %in% names(value)) {
                       if (cnt == 3) {
+                      options(warn=-1)
                         value$Rk <- pnmodelparamsbounds$Rkmax
                         dnbnds$Rk <- pnmodelparamsbounds$Rkmax - 
                           abs(pnmodelparams$Rk) * 0.5
                         upbnds$Rk <- pnmodelparamsbounds$Rkmax + 
                           abs(pnmodelparams$Rk) * 0.5
                         repoptm <- 1
+                      options(warn=0)
                       }
                     } else {
                       cnt = cnt + 1
                     }
-                    if (cnt == 4 & modno != 17 & ("K" %in% names(value))) {
+                    if (cnt == 4 & (modno < 17 | modno >= 18) & ("K" %in% names(value))) {
+                     options(warn=-1)
                       if ("Rk" %in% names(value)) 
                         value$Rk <- pnmodelparams$Rk
                       if ("Rk" %in% names(value)) 
@@ -2053,16 +2528,20 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                       upbnds$K <- pnmodelparamsbounds$Kmin + 
                         abs(pnmodelparams$K) * 0.5
                       repoptm <- 1
+                       options(warn=0)
                     }
-                    if (cnt == 5 & modno != 17 & ("K" %in% names(value))) {
+                    if (cnt == 5 & (modno < 17 | modno >= 18) & ("K" %in% names(value))) {
+                     options(warn=-1)
                       value$K <- pnmodelparamsbounds$Kmax
                       dnbnds$K <- pnmodelparamsbounds$Kmax - 
                         abs(pnmodelparams$K) * 0.5
                       upbnds$K <- pnmodelparamsbounds$Kmax + 
                         abs(pnmodelparams$K) * 0.5
                       repoptm <- 1
+                       options(warn=0)
                     }
                   }
+                  options(warn=0)
                   dnbnds[dnbnds == 0] <- 1e-05
                   upbnds[upbnds == 0] <- 1e-05
                   value[value == 0] <- 1e-05
@@ -2078,20 +2557,78 @@ SSposnegRichards <- structure(function(x, Asym = NA,
           	  	} else {
           	  	chinputval <- data.frame(t(inputval))
           	  	chinputmax <- data.frame(t(inputmax))
-			names(chinputval) <- names(inputval)
+          	  	if(length(chinputval) == 1) chinputval <- data.frame(inputval)
+          	  	if(length(chinputmax) == 1) chinputmax <- data.frame(inputmax)
+ 			names(chinputval) <- names(inputval)
             		chmx<-paste(substr(names(inputval),1,2),"max","")
             		chmx<-sub(" ","",chmx)
             		chmx<-sub(" ","",chmx)
             		names(chinputmax) <- chmx
-            	  	if (is.null(chinputval$Ri) == FALSE) {
+            	  	if (length(chinputval$Ri) == 1) {
           	  		if (chinputval$Ri >= chinputmax$Rimax) 
           	  			chinputval$Ri <- chinputmax$Rimax - ((chinputmax$Rimax - min(xy$x, na.rm=TRUE)) * 0.95)
           	 	 }
           	  }
                   if (repoptm == 1) {
-                    try(oppar1 <- (optim(value, richardsR, method = "L-BFGS-B", 
-                      lower = dnbnds, upper = upbnds, control = list(maxit = 2000))), 
+     		    SScurveeval <-function(value,xy){
+     		    calltxt<-""
+     		    nm <-names(value)
+     		    value<-as.numeric(value)
+     		    names(value)<-nm
+     		    if("Asym" %in% names(value)) {
+     		    calltxt <- "Asym=Asym"
+     		    Asym <- as.numeric(value[names(value)=="Asym"])} else {
+     		    Asym <- NA}
+     		    if("K" %in% names(value)) {
+     		    calltxt <- paste(calltxt,"K=K",sep=",")
+     		    K <- as.numeric(value[names(value)=="K"])} else {
+     		    K <- NA}
+     		    if("Infl" %in% names(value)) {
+     		    calltxt <- paste(calltxt,"Infl=Infl",sep=",")
+     		    Infl <- as.numeric(value[names(value)=="Infl"])} else {
+     		    Infl <- NA}
+     		    if("M" %in% names(value)){
+     		    calltxt <- paste(calltxt,"M=M",sep=",")
+     		    M <- as.numeric(value[names(value)=="M"])} else {
+     		    M <- NA}
+     		    if("RAsym" %in% names(value)) {
+     		    calltxt <- paste(calltxt,"RAsym=RAsym",sep=",")
+     		    RAsym <- as.numeric(value[names(value)=="RAsym"])} else {
+     		    RAsym <- NA}
+     		    if("Rk" %in% names(value)) {
+     		    calltxt <- paste(calltxt,"Rk=Rk",sep=",")
+     		    Rk <- as.numeric(value[names(value)=="Rk"])} else {
+     		    Rk <- NA}
+     		    if("Ri" %in% names(value)) {
+     		    calltxt <- paste(calltxt,"Ri=Ri",sep=",")
+     		    Ri <- as.numeric(value[names(value)=="Ri"])} else {
+     		    Ri <- NA}
+     		    if("RM" %in% names(value)) {
+     		    calltxt <- paste(calltxt, "RM=RM",sep=",")
+     		    RM <- as.numeric(value[names(value)=="RM"])} else {
+     		    RM <- NA}
+     		    callfin <- paste("posnegRichards.eqn(xy$x,",calltxt,",modno = ",modno,",pn.options = ",paste("'",optvarnm,"'",sep=""),")",sep="")
+     		    ynought <- sum(abs(xy$y-eval(parse(text=callfin)))^2)
+     		    return(ynought)
+     	            }
+     		    if(counterR == 0) saveb4 <- value
+		    counterR <- counterR + 1
+		    if(counterR == 1) {
+		    savparR <- list(Inf)
+		    names(savparR) <- "1"
+		    savyR <- list(Inf)
+		    names(savyR) <- "1"
+		    }
+		     eval(parse(text=paste("savparR$'",counterR,"'<-value",sep="")))
+		     eval(parse(text=paste("savyR$'",counterR,"'<-",SScurveeval(value,xy),sep="")))
+		     parscaleR <- sapply(value,roundparscale)
+                     try(oppar1 <- (optim(value, richardsR, method = "L-BFGS-B", 
+                      lower = dnbnds, upper = upbnds, control = list(maxit = 1000,
+                      parscale = parscaleR))), 
                       silent = TRUE)
+                     counterR <- counterR + 1
+		     eval(parse(text=paste("savparR$'",counterR,"'<-oppar1$par",sep="")))
+		     eval(parse(text=paste("savyR$'",counterR,"'<-",SScurveeval( oppar1$par,xy),sep="")))
                   }
                   repoptm <- 0
                   cnt <- cnt + 1
@@ -2111,27 +2648,10 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 if (is.na(finalpars[1] == TRUE)) {
                   if (modelparams$verbose == TRUE) 
                     print("Warning: simultaneous optimization of pre- and post- peak curves failed, using separately fitted parameters")
-                  if (is.na(inputval[1]) == TRUE) {
-                    if (modno > 19) {
-                      value <- c(Asym, K, Infl, val1)
-                    } else {
-                      if (modno == 17) {
-                        value <- c(Asym, Infl, M, val1)
-                      } else {
-                        value <- c(Asym, K, Infl, M, val1)
-                      }
-                    }
-                  } else {
-                    if (modno > 19) {
-                      value <- c(Asym, K, Infl, inputval)
-                    } else {
-                      if (modno == 17) {
-                        value <- c(Asym, Infl, M, inputval)
-                      } else {
-                        value <- c(Asym, K, Infl, M, inputval)
-                      }
-                    }
-                  }
+                  value<-NA
+                  try(eval(parse(text=paste("value<-savparR$'",which.min(savyR),"'",sep=""))),silent=T)
+                   if( class(value) == "try-error" ) value <- NA
+                  if( is.na(value[1]) ) value <- saveb4
                 } else {
                   finpars <- finalpars
                   if ("Rk" %in% names(finpars)) {
@@ -2147,7 +2667,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     }
     if (modelparams$force4par == TRUE) {
     	 if (modno != 20 & modno != 32) {
-                   if (modno != 17) {
+                   if (modno < 17 | modno >= 18) {
                          value <- value[1:4]
                    	 names(value) <- mCall[c("Asym", "K", "Infl", "M")]
                    } else {
@@ -2166,6 +2686,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         } else {
             vnames <- c("Asym", "K", "Infl", "M")
         }
+        if (modno >= 17 & modno < 18) vnames <- c("Asym", "Infl", "M")
         if (modno == 1 | modno == 21 | modno == 18) {
             names(value) <- mCall[c(vnames, "RAsym", "Rk", "Ri", 
                 "RM")]
@@ -2173,7 +2694,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         if (modno == 2 | modno == 22) {
             names(value) <- mCall[c(vnames, "RAsym", "Rk", "Ri")]
         }
-        if (modno == 3 | modno == 23) {
+        if (modno == 3 | modno == 23 | modno == 17.1) {
             names(value) <- mCall[c(vnames, "Ri", "RM")]
         }
         if (modno == 4 | modno == 24) {
@@ -2182,7 +2703,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         if (modno == 5 | modno == 25) {
             names(value) <- mCall[c(vnames, "RM")]
         }
-        if (modno == 6 | modno == 26) {
+        if (modno == 6 | modno == 26 | modno == 17) {
             names(value) <- mCall[c(vnames, "RAsym", "Ri", "RM")]
         }
         if (modno == 7 | modno == 27) {
@@ -2194,7 +2715,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         if (modno == 9 | modno == 29) {
             names(value) <- mCall[c(vnames, "Rk", "RM")]
         }
-        if (modno == 10 | modno == 30) {
+        if (modno == 10 | modno == 30 | modno == 17.3) {
             names(value) <- mCall[c(vnames, "Ri")]
         }
         if (modno == 11 | modno == 31) {
@@ -2203,7 +2724,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         if (modno == 12 | modno == 32 | modno == 19) {
             names(value) <- mCall[vnames]
         }
-        if (modno == 13 | modno == 33) {
+        if (modno == 13 | modno == 33 | modno == 17.2) {
             names(value) <- mCall[c(vnames, "RAsym", "Ri")]
         }
         if (modno == 14 | modno == 34) {
@@ -2218,49 +2739,81 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         if (modno == 20) {
             names(value) <- mCall[c("Asym", "K", "Infl")]
         }
-        if (modno == 17) {
-            names(value) <- mCall[c("Asym", "Infl", "M", "RAsym", 
-                "Ri", "RM")]
-        }
     }
     options(warn = 0)
-    if (modno == 18 | modno == 19) {
+    if (modno == 18 | modno == 19 | frommodpar == TRUE) {
         Asym = as.numeric(value[1])
         K = as.numeric(value[2])
         Infl = as.numeric(value[3])
         M = as.numeric(value[4])
-        Amax = Asym + (abs(Asym) * 2.5)
-        Amin = Asym - (abs(Asym) * 0.5)
-        Kmax = K + (abs(K) * 0.5)
-        Kmin = K - (abs(K) * 0.5)
-        Imax = Infl + (abs(Infl) * 5)
-        Imin = Infl + (abs(Infl) * -2.5)
-        while (abs(Imax * Kmax) > 700) Imax = Imax * 0.9
-        while (abs(Imin * Kmax) > 700) Imin = Imin * 0.9
-        if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
-        if (abs(M) < 0.1) {
-            Mmax = 0.5
-            Mmin = -0.5
+            Amax = Asym + diff(range(xy$y, na.rm = TRUE) * mediummult)
+            Amin = Asym - diff(range(xy$y, na.rm = TRUE) * mediummult)
+            Kmax = K + (abs(K) * smallmult)
+            Kmin = K - (abs(K) * smallmult)
+ 	    if (Kmin < 1e-05 & Kmin >= 0 ) {
+ 	            Kmin = 1e-05
+ 	         } else {
+            if (Kmin > (-1e-05) & Kmin < 0) Kmin = (-1e-05)
+          				    }
+            Imax = Infl + diff(range(xy$x, na.rm = TRUE)  * mediummult)
+            Imin = Infl + diff(range(xy$x, na.rm = TRUE)  * -mediummult)
+            while (abs(Imax * Kmax) > 700) Imax = Imax * 0.9
+            while (abs(Imin * Kmax) > 700) Imin = Imin * 0.9
+               	 if( !is.na(Imax) ) {
+        		if (Imax > maxIval) Imax <- maxIval
+           	if(Imax < Infl) {
+           	   maxIval <- Infl + ((maxIval - min(xy$x)) * 0.05)
+           	   Imax <- maxIval  
+           	   }
+           	  		}
+           	  if( !is.na(Imin) ) {
+          	   if(Imin > Infl) Imin <- min(xy$x, na.rm=TRUE) 
+          	   if(Imin > Infl) {
+        		   Imin <- Infl - ((maxIval - min(xy$x)) * 0.05)
+           	   			}
+
+	    	}
+         if (abs(M) < 0.1) {
+            Mmax = smallmult
+            Mmin = -smallmult
         } else {
-            Mmax = M + abs(M * 2)
-            Mmin = M - abs(M * 2)
+            Mmax = M + abs(M * smallmult)
+            Mmin = M - abs(M * smallmult)
         }
-        if (modno == 18) {
+        if (modno == 18 | modno == 1) {
             RAsym = as.numeric(value[5])
             Rk = as.numeric(value[6])
             Ri = as.numeric(value[7])
             RM = as.numeric(value[8])
-            RAmax = Amax
-            RAmin = Amin
-            Rkmax = Kmax
-            Rkmin = Kmin
-            Rimax = Imax
-            Rimin = Imin
-            RMmax = Mmax
-            RMmin = Mmin
-            if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
-            if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
-        } else {
+            RAmax = RAsym + (abs(RAsym) * mediummult)
+            RAmin = RAsym - (abs(RAsym) * mediummult)
+            Rkmax = Rk + (abs(Rk) * smallmult)
+            Rkmin = Rk - (abs(Rk) * smallmult)
+            Rimax = Ri + (abs(Ri) * smallmult)
+            Rimin = Ri + (abs(Ri) * -smallmult)
+            while (abs(Rimax * Rkmax) > 700) Rimax = Rimax * 0.9
+            while (abs(Rimin * Rkmax) > 700) Rimin = Rimin * 0.9     	 
+            if( !is.na(Rimax) ) {
+       		if (Rimax > maxRival) Rimax <- maxRival
+          	if(Rimax < tAsym) {
+          	   maxRival <- tAsym + ((maxRival - min(xy$x)) * 0.95)
+          	   Rimax <- maxRival  
+          	   }
+          	  		}
+          	  if( !is.na(Rimin) ) {
+         	   if(Rimin > tAsym) Rimin <- min(xy$x, na.rm=TRUE) 
+         	   if(Rimin > tAsym) {
+       		   Rimin <- tAsym - ((maxIval - min(xy$x)) * 0.95)
+          	   			}
+	    }	
+	    if (abs(RM) < 0.1) {
+	                RMmax = smallmult
+	                RMmin = -smallmult
+	            } else {
+	                RMmax = RM + abs(RM * smallmult)
+	                RMmin = RM - abs(RM * smallmult)
+        }
+         } else {
             RAsym <- NA
             Rk <- NA
             Ri <- NA
@@ -2298,9 +2851,15 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             "RMmax")
      	valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
              	unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
-        	names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
-        valexp[1:31] <- as.numeric( valexp[1:31] )
-        valexp[13:15] <- as.logical( valexp[13:15] )
+        	names( valexp[1:31] ) <- names( c(exportparams[1:15],exportparamsbounds) )
+      	valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
+        	valexp[14:15] <- as.logical( valexp[14:15] )
+        	if(is.numeric(modelparams$twocomponent.x)) {
+        	valexp[13] <- as.numeric( valexp[13] )
+        	} else {
+  		valexp[13] <- as.logical( valexp[13] )     	
+        	}
+      	try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
     	assign(optvarnm, valexp, .GlobalEnv) 
     }
     if (modelparams$verbose == TRUE) {
@@ -2308,7 +2867,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         prnval <- unlist(value)
         names(prnval) <- names(value)
         print(prnval)
-    }
-    value
+    }                 
+     value
 }, pnames = c("Asym", "K", "Infl", "M", "RAsym", "Rk", "Ri", 
     "RM"), class = "selfStart") 

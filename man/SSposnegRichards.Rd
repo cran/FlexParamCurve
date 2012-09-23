@@ -124,11 +124,15 @@ parameter estimates, fitting options and bounds}
     
      modno 17 represents a different parameterization for a custom model:
      (Asym/ 1 + exp(Infl - x)/ M) - (RAsym / 1 + exp(Ri - x)/ RM), in
-     which M and RM actually represent scale parameters not shape parameters.
+     which M and RM actually represent scale parameters not shape parameters. This model and a suite of reductions:
+     modno 17.1:
+     modno 17.2:
+     modno 17.3:
+     are designed for use in modeling migration, \eqn{sensu.} Bunnefeld et al. 2011, Singh et al. In press.
     
      modnos 18, 19 and 20 are reserved for internal use by \code{\link{modpar}}.
     
-     To access common 3 parameter sigmoidal models use modno = 20, fixing
+     To access common 3 parameter sigmoidal models use modno = 32, fixing
      parameters (using \code{\link{change.pnparameters}}) to M = 1 for logistic,
      M = 0.1 for Gompertz, and M= -0.3 for von Bertalanffy. The same settings can be
      used with modno = 2 to fit the double-logistic, double-Gompertz or double-Von Bertalannfy.
@@ -199,10 +203,13 @@ parameter estimates, fitting options and bounds}
      are not return but are substituted in calls to \code{\link{nls}}
      \code{\link{nlsList}} and \code{\link{nlme}} with the fixed parameters
      stored in \code{pnmodelparams}; see \code{\link{modpar}}}
-\references{## Oswald, S.A. et al. (in review) FlexParamCurve: R package for flexible
-     fitting of nonlinear parametric curves. Application paper submitted to Methods
-     in Ecology and Evolution.
-	#1# Nelder, J.A. (1962) Note: an alternative form of a generalized
+\references{## Oswald, S.A. et al. (Early view) FlexParamCurve: R package for flexible
+     fitting of nonlinear parametric curves. Methods in Ecology and Evolution.
+     doi: 10.1111/j.2041-210X.2012.00231.x (see also tutorial and introductory videos at:
+     http://www.methodsinecologyandevolution.org/view/0/podcasts.html
+     (posted September 2012 - if no longer at this link, check the archived videos at:
+     http://www.methodsinecologyandevolution.org/view/0/VideoPodcastArchive.html#allcontent
+	 #1# Nelder, J.A. (1962) Note: an alternative form of a generalized
      logistic equation. Biometrics, 18, 614-616.
          #2#
      Huin, N. & Prince, P.A. (2000) Chick growth in albatrosses: curve fitting
@@ -219,7 +226,13 @@ parameter estimates, fitting options and bounds}
          #6#
      Ross, J.L. et al. (1994) Age, growth, mortality, and reproductive biology
      of red drums in North Carolina waters. Transactions of the American Fisheries
-     Society 124: 37-54.}
+     Society 124: 37-54.
+     	 #7#
+     Bunnefeld et al. (2011) A model-driven approach to quantify migration patterns:
+     individual, regional and yearly differences. Journal of Animal Ecology 80: 466-476.
+     	 #8#
+     Singh et al. (In press) From migration to nomadism: movement variability in a northern
+     ungulate across its latitudinal range. Ecological Applications.}
 \author{Stephen Oswald <ozsao23@hotmail.com>}
 \note{Any models that require parameter fixing (i.e. all except #1)
      extract appropriate values from the object \code{pnmodelparams} for the fixed
@@ -261,19 +274,20 @@ parameter estimates, fitting options and bounds}
     # retrieve mean estimates of 8 parameters using getInitial
     # and posneg.data object
     data(posneg.data)
-    modpar(posneg.data$age, posneg.data$mass,verbose=TRUE, pn.options = "myoptions")
+    modpar(posneg.data$age, posneg.data$mass,verbose=TRUE, pn.options = "myoptions", wide.bounds=TRUE)
     getInitial(mass ~ SSposnegRichards(age, Asym, K, Infl, M, 
         RAsym, Rk, Ri, RM, modno = 1, pn.options = "myoptions"), data = posneg.data)
 
     # retrieve mean estimates and produce plot to illustrate fit for 
-    # curve with RM fixed
+    # curve with M, Ri and Rk fixed
     pars <- coef(nls(mass ~ SSposnegRichards(age, 
-        Asym = Asym, K = K, Infl = Infl, RAsym = RAsym, Rk = Rk, M = M,
-        	Ri = Ri, modno = 2, pn.options = "myoptions"), data = posneg.data))
+        Asym = Asym, K = K, Infl = Infl, RAsym = RAsym, 
+        	RM = RM, modno = 24, pn.options = "myoptions"), data = posneg.data,
+        	control=list(tolerance = 10)))
     plot(posneg.data$age, posneg.data$mass, pch=".")
     curve(posnegRichards.eqn(x, Asym = pars[1], K = pars[2], 
-        Infl = pars[3], M = pars[4], RAsym = pars[5], Rk = pars[6], 
-        Ri = pars[7],  modno = 2, pn.options = "myoptions"), xlim = c(0, 
+        Infl = pars[3], RAsym = pars[4],  
+        RM = pars[5],  modno = 24, pn.options = "myoptions"), xlim = c(0, 
         200), add = TRUE)
     
     # retrieve mean estimates and produce plot to illustrate fit for custom model 17

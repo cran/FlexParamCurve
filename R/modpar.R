@@ -12,6 +12,9 @@ structure(function
                      force8par = FALSE,
                      force4par = FALSE,
                      suppress.text = FALSE,
+                     taper.ends = 0.45,
+                     width.bounds = 1,
+                     bounds.error = FALSE,
                      ...
                      ) {
     options(warn = -1)
@@ -34,6 +37,7 @@ structure(function
     prntqut( suppress.text, " ")
     detl <- TRUE
     if(verbose == TRUE) detl <- FALSE
+    xy <- sortedXyData(x,y)
     skel <- rep(list(1), 15)
     initval <- c(rep(NA, 15))
     initval <- relist(initval, skel)
@@ -45,39 +49,64 @@ structure(function
     initval$last.y <- last.y
     initval$x.at.last.y <- x.at.last.y
     initval$twocomponent.x <- twocomponent.x
+    if(width.bounds != 1) initval$width.bounds <- width.bounds
+    if(bounds.error == TRUE) initval$bounds.error <- bounds.error
     initval$verbose <- verbose
     initval$force4par <- force4par
+    initval$taper.ends <- taper.ends
     skel1 <- rep(list(1), 16)
     initval1 <- c(rep(NA, 16))
     initval1 <- relist(initval1, skel1)
     names(initval1) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
         "Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
         "Rimin", "Rimax", "RMmin", "RMmax")
-    formtassign <- function (x,y,type=0) {    
-    	valexp <- sapply( c( unlist(x),unlist(y) ) 
+    formtassign <- function (x,y,type=0) {
+    	options(warn=-1)
+    	valexp <- sapply( c( unlist(x[1:15]),unlist(y) ) 
    		 , function(x) list(x))
-    	names( valexp[1:31] ) <- names( c(x,y) )
-    	valexp[1:31] <- as.numeric( valexp[1:31] )
-    	valexp[13:15] <- as.logical( valexp[13:15] )
-    	if(type == 1) {
+    	names( valexp[1:31] ) <- names( c(x[1:15],y) )
+    	valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
+    	valexp[14:15] <- as.logical( valexp[14:15] )
+    	if(is.numeric(x$twocomponent.x)) {
+	        valexp[13] <- as.numeric( valexp[13] )
+	    } else {
+	  	valexp[13] <- as.logical( valexp[13] )     	
+   	}
+   	if(type == 1) {
+   		if(names( x[length(x)]) == "taper.ends") {
+   		valexp[16] <- x$taper.ends
+   		names(valexp[16]) <-"taper.ends"
+   		return(valexp[1:16])
+   		}else{
     		return(valexp[1:15])
+    		}
     	} else {
     		if(type == 2) {
-    			return(valexp[16:31])
+    			  if(names( x[length(x)]) == "taper.ends") {
+			  valexp$taper.ends <- x$taper.ends
+			  return(valexp[16:32])
+			   }else{
+			  return(valexp[16:31])
+    			  }
     		}  else {
-    		return(valexp)
+    			 if(names( x[length(x)]) == "taper.ends")
+    			 	valexp$taper.ends <- x$taper.ends
+			 return(valexp)
     		}
     		      }
+         options(warn=0)
     		      			 }
     parseval <- function(txt1,evtxt,txt2) {
     callout<- parse(text=sprintf("%s",paste(txt1,as.character(evtxt),txt2,sep="")))
     return(eval(callout))
     					  }
     valexp <- formtassign(initval, initval1)
-    assign(pnopt, valexp, .GlobalEnv)
-    xy <- data.frame(x, y)
-    xy <- na.omit(xy)
-    evlfit<-function(val1,val2){
+    valexp$taper.ends <- taper.ends
+    if(width.bounds != 1) valexp$width.bounds <- width.bounds
+    if(bounds.error == TRUE) valexp$bounds.error <- bounds.error
+    valexp$modpar <- TRUE
+    assign(pnoptnm, valexp, .GlobalEnv)
+    evlfit<-function(val1,val2,force8par,savoptions){
  	richards <- function(x, Asym, K, Infl, M) Asym/Re(as.complex(1 +
     	    M * exp(-K * (x - Infl)))^(1/M))
 	 SSposnegRichardsF <- function(x, Asym, K, Infl, M, RAsym,
@@ -102,67 +131,83 @@ structure(function
 	}
 	if(evl1<=evl2) {
 	valfin<-val1
+	assign(pnoptnm, savoptions, .GlobalEnv)
 	}else{
 	valfin<-val2
 	}
+	if(length(val2)<5 & length(val1) >4 & force8par == TRUE) valfin <- val1
+	assign(pnoptnm, savoptions, .GlobalEnv)
 	return(valfin)
 	}
     value <- NA
     succ <- FALSE
     if(force4par == TRUE & is.na(twocomponent.x)) {
-      value <- parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
-    	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
-            savvalue<-value
-            value<-NA
+     if(detl == FALSE) prntqut( suppress.text, "Estimating parameter bounds....")
+      value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+    	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+    	             silent = detl)
+      savvalue<-value
+      value <-NA
+      if(class(value[1]) == "try-error") stop ("Bounds unestimable")
+      savoptions <- get(pnoptnm, .GlobalEnv)
     prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
-    try({ value <- parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
-                    K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy, ...))")
-         		}, silent = detl)
-         if(is.na(value[1]) == FALSE & class(value)[1] != "try-error") prntqut( suppress.text, "4 parameter nls fit successful")
+       value <- try(parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
+                    K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy, ...))")
+         		, silent = detl)
+         if(is.na(value[1]) == FALSE & class(value)[1] != "try-error") {
+         prntqut( suppress.text, "4 parameter nls fit successful")
+         }
          if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
           prntqut( suppress.text, "....4-parameter nls fit failed")
           prntqut( suppress.text, "(4) Status of 4-parameter Richards getInitial call:")
-         value <- parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
-	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
+         value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+	             K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+	             silent = detl)
             if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
             stop("estimates not available for data provided. Please check data, call or provide estimates manually, see ?modpar")
             assign(".paramsestimated", FALSE, envir = globalenv())
- 
-         					} else {
+         					} else {					
          					prntqut( suppress.text, "....4 parameter getInitial successful")
          					}
          }
-  if(!is.na(value[1]) & class(value)[1] != "try-error" & !is.na(savvalue[1]) & class(savvalue)[1] != "try-error") value<-evlfit(savvalue,value)
+  if(!is.na(value[1]) & class(value)[1] != "try-error" & !is.na(savvalue[1]) & class(savvalue)[1] != "try-error") 
+  	value<-evlfit(savvalue,value,force8par,savoptions)
     }else{
-    if(detl == TRUE) prntqut( suppress.text, "Estimating parameter bounds....")
-    value <- parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+    if(detl == FALSE) prntqut( suppress.text, "Estimating parameter bounds....")
+    value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
                 K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
-            Ri = Ri, RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
-            tst<- get(pnoptnm, .GlobalEnv)[16:31]
+            Ri = Ri, RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+            silent = detl)
      if (is.na(value[1]) == TRUE | class(value)[1] == "try-error"){
-        value <- parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
-         	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
-            bndsvals<-get(pnoptnm, .GlobalEnv) [16:31]
+        value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+         	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+         	             silent = detl)
+             if(class(value[1]) == "try-error") stop ("Bounds unestimable")
+            bndsvals<-get(pnoptnm, .GlobalEnv) 
+            initval[1:8] <- value
+            initval[13]<-bndsvals[13]
+            bndsvals<-bndsvals [16:31]
             bndsvals[9:16]<-bndsvals[1:8]
             valexp <- formtassign( initval , bndsvals)				  
-	    assign(pnoptnm, valexp, .GlobalEnv)  
-            			} else {
-            valexp <- formtassign( initval , tst)				  
-	    assign(pnoptnm, valexp, .GlobalEnv)			
-            			}
-         savvalue<-value
-         value<-NA
-    if(force4par == TRUE & !is.na(twocomponent.x)) prntqut( suppress.text, "Cannot force a two component model to have 4 parameters")
+	    assign(pnoptnm, valexp, .GlobalEnv)
+            			} else {     
+      if(class(value[1]) == "try-error") stop ("Bounds unestimable")
+    savvalue<-value
+      value <-NA
+      savoptions <- get(pnoptnm, .GlobalEnv)    							}
+    if(force4par == TRUE & !is.na(twocomponent.x)) stop("Cannot force a two component model to have 4 parameters")
     prntqut( suppress.text, "(1) Status of 8-parameter double-Richards curve fit in nls:")
-    value <- parseval("try(coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
+    value <- try(parseval("try(coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
         K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,
-        RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy, ...)), silent = detl)")  
+        RM = RM, modno = 1, pn.options =",  pnoptnm,"), data = xy, ...)), silent = detl)"),
+        silent=detl)
     if (is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
         prntqut( suppress.text, "....8 parameter nls fit failed")
         prntqut( suppress.text, "(2) Status of 8-parameter double-Richards getInitial call")
-        value <- parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+        value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
             K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
-            Ri = Ri, RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy), silent = detl)")
+            Ri = Ri, RM = RM, modno = 1, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+            silent = detl)
              if (is.na(value[1]) == FALSE & class(value)[1] != "try-error") {
              		succ <- TRUE
              		prntqut( suppress.text, "....8-parameter getInitial successful")
@@ -171,15 +216,17 @@ structure(function
         prntqut( suppress.text, "....8-parameter nls fit successful")
         succ <- TRUE
     }
-    if(!is.na(value[1]) & class(value)[1] != "try-error" & !is.na(savvalue[1]) & class(savvalue)[1] != "try-error") value<-evlfit(savvalue,value)
+    if(!is.na(value[1]) & class(value)[1] != "try-error" & !is.na(savvalue[1]) & class(savvalue)[1] != "try-error") 
+    	value<-try(evlfit(savvalue,value,force8par,savoptions), silent = detl)
     if ((is.na(value[1]) == TRUE & is.na(twocomponent.x)) | (class(value)[1] == "try-error" & is.na(twocomponent.x)) ) {
         prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
         prntqut( suppress.text, "if force8par==TRUE second curve parameters estimated as RAsym=Asym*0.05, Rk=K, Ri=Infl, RM=M")
         try({
-            value <- parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
-                K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy, ...))")
+            value <- try(parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
+                K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy, ...))"),
+                silent = detl)
             if (force8par == TRUE) {
-                value <- c(value, value[1] * 0.05, value[2],
+                value <- c(value, -value[1] * 0.05, x-value[2],
                   value[3], value[4])
                 names(value) <- c("Asym", "K", "Infl", "M", "RAsym",
                   "Rk", "Ri", "RM")
@@ -189,10 +236,10 @@ structure(function
           prntqut( suppress.text, "....4-parameter nls fit failed")
           prntqut( suppress.text, "(4) Status of 4-parameter Richards getInitial call:")
           try({
- 	    value <- parseval("getInitial(y ~ SSposnegRichards(x, Asym = Asym,
-	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy)")
+ 	    value <- try(parseval("getInitial(y ~ SSposnegRichards(x, Asym = Asym,
+	             K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy)"), silent = detl)
 	    if (force8par == TRUE) {
-	        value <- c(value, value[1] * 0.05, value[2],
+	        value <- c(value, -value[1] * 0.05, x - value[2],
 	          value[3], value[4])
 	        names(value) <- c("Asym", "K", "Infl", "M", "RAsym",
 	        "Rk", "Ri", "RM")
@@ -209,66 +256,11 @@ structure(function
                   stop("**Estimates not available for data provided**. Please check data or provide estimates manually, see ?modpar")
     }
     }
-    if (length(value) == 4) {
-        value <- c(value, rep(NA, 4))
-        names(value) <- c(names(value[1:4]), "RAsym", "Rk", "Ri",
-            "RM")
-    }
-    optvals <- c(first.y, x.at.first.y, last.y, x.at.last.y, twocomponent.x, verbose, force4par)
-    names(optvals) <- c("first.y", "x.at.first.y", "last.y", "x.at.last.y", "twocomponent.x", "verbose", "force4par")
-    value <- c(unlist(value), optvals)
-    skel <- rep(list(1), 15)
-    value1 <- relist(value, skel)
-    names(value1) <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
-        "Ri", "RM", "first.y", "x.at.first.y", "last.y", "x.at.last.y",
-        "twocomponent.x", "verbose", "force4par")
-    lodpar <- get(pnoptnm, .GlobalEnv) [1:15]
-    value1$twocomponent.x <- lodpar$twocomponent.x
-    value1$verbose <- initval$verbose
-    value1$force4par <- initval$force4par
-    valexp <- formtassign( value1 , get(pnoptnm, .GlobalEnv) [16:31]) 				  
-    assign(pnoptnm, valexp, .GlobalEnv)
-    pnmodelparams <- value1
-    Amax = pnmodelparams$Asym + (abs(pnmodelparams$Asym) * 2.5)
-    Amin = pnmodelparams$Asym - (abs(pnmodelparams$Asym) * 0.5)
-    Kmax = pnmodelparams$K + (abs(pnmodelparams$K) * 0.5)
-    Kmin = pnmodelparams$K - (abs(pnmodelparams$K) * 0.5)
-    Imax = pnmodelparams$Infl + (abs(pnmodelparams$Infl) * 10)
-    Imin = pnmodelparams$Infl + (abs(pnmodelparams$Infl) * -2.5)
-    while (abs(Imax * Kmax) > 700) Imax = Imax * 0.9
-    while (abs(Imin * Kmax) > 700) Imin = Imin * 0.9
-    Mmax = pnmodelparams$M + abs(pnmodelparams$M * 2)
-    Mmin = pnmodelparams$M - abs(pnmodelparams$M * 2)
-    if (is.na(pnmodelparams$RAsym)) {
-        pnmodelparams$RAsym <- pnmodelparams$Asym
-        pnmodelparams$Rk <- pnmodelparams$K
-        pnmodelparams$Ri <- pnmodelparams$Infl
-        pnmodelparams$RM <- pnmodelparams$M
-    }
-    RAmax = pnmodelparams$RAsym + (abs(pnmodelparams$RAsym) *
-        2.5)
-    RAmin = pnmodelparams$RAsym - (abs(pnmodelparams$RAsym) *
-        0.5)
-    Rkmax = pnmodelparams$Rk + (abs(pnmodelparams$Rk) * 0.5)
-    Rkmin = pnmodelparams$Rk - (abs(pnmodelparams$Rk) * 0.5)
-    Rimax = pnmodelparams$Ri + (abs(pnmodelparams$Ri) * 5)
-    Rimin = pnmodelparams$Ri + (abs(pnmodelparams$Ri) * -2.5)
-    while (abs(Rimax * Rkmax) > 700) Rimax = Rimax * 0.9
-    while (abs(Rimin * Rkmax) > 700) Rimin = Rimin * 0.9
-    RMmax = pnmodelparams$RM + abs(pnmodelparams$RM * 2)
-    RMmin = pnmodelparams$RM - abs(pnmodelparams$RM * 2)
-    value2 <- c(Amin, Amax, Kmin, Kmax, Imin, Imax, Mmin, Mmax,
-        RAmin, RAmax, Rkmin, Rkmax, Rimin, Rimax, RMmin, RMmax)
-    skel1 <- rep(list(1), 16)
-    value3 <- relist(value2, skel1)
-    names(value3) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
-        "Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
-        "Rimin", "Rimax", "RMmin", "RMmax")
-    valexp <- formtassign( value1, value3) 				  
-    assign(pnoptnm, valexp, .GlobalEnv)  
-    options(warn = 0)
-    assign(".paramsestimated", TRUE, envir = globalenv())
-    return(valexp)
+    
+    valexp<-get(pnoptnm, .GlobalEnv)
+    assign(pnoptnm, valexp[1:length(valexp)-1], .GlobalEnv)
+    valexp <- valexp[1:8]
+     return(valexp)
     }
 , ex = function(){
         data(posneg.data)

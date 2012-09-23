@@ -49,7 +49,15 @@ multiple parameters to (by default) the mean parameter across all individuals in
 model). All models are detailed in the \code{\link{SSposnegRichards}} help file. Any models that require parameter fixing
 (i.e. all except model #1) extract appropriate values from the specified list passed by name to pn.options for the fixed parameters. 
 This object is most easily created by running \code{\link{modpar}} and can be adjusted manually or by using 
-\code{\link{change.pnparameters}} to user required specification.}
+\code{\link{change.pnparameters}} to user required specification.
+
+If parameters are omitted in the call but required by the \eqn{modno} specified in the call, then they will be automatically extracted
+from the pn.options object supplied, with the appropriate warning. Thus, it is not necessary to list out parameters and modno but is 
+a useful exercise if you are unfamiliar or in doubt of exactly which model is being specified by \eqn{modno}, see \code{\link{SSposnegRichards}}
+for a list. If a parameter is supplied separately with the call then this value will override those stored in for the same parameter in \eqn{modno}:
+see examples below.
+
+}
 \value{the solution of the equation specified (by modno), given the user-entered parameters}
 
 \author{Stephen Oswald <ozsao23@hotmail.com>}
@@ -68,9 +76,21 @@ require(graphics)
    	 y <- posnegRichards.eqn(x, 1000, 0.5, 25, 1, 100, 0.5, 125, 
    	 1, modno = 1, pn.options = "myoptions")
    	 print( c(x = x, y = y) )
+   	 
+# plot 8-parameter model using saved parameter values from modpar
+	 plot(posneg.data$age, posneg.data$mass, pch = ".")
+	 curve(posnegRichards.eqn(x,modno = 1, pn.options = "myoptions"), add = TRUE, lwd = 3)
+	 
+# plot 3-parameter model using saved parameter values from modpar
+         curve(posnegRichards.eqn(x,modno = 32, pn.options = "myoptions"), add = TRUE, col =2 , lwd = 3)
+	 
+# tweak the plot of a 3-parameter model by user specifying a lower asymptote: ie give some parameter values
+# directly and others through pn.options by default
+         curve(posnegRichards.eqn(x,modno = 32, Asym = 3200, pn.options = "myoptions"), add = TRUE, col = 5, lwd = 3)
+	 
 
 # calculate y (dependent variable) for a given x for a 4-parameter Richards model, note that second curve parameters are unneeded
-# and replaced with value from pnmodelparams
+# and replaced with value from pn.options. User-supplied variables over-ride those stored in pn.options object
 	 x = 10
    	 y <- posnegRichards.eqn(x, 1000, 0.5, 25, 1, 
    	 1, modno = 12, pn.options = "myoptions")

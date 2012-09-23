@@ -9,8 +9,10 @@ grp,
 pn.options,
 forcemod = 0,
 existing = FALSE,
-penaliz = "1/sqrt(n)")
-}
+penaliz = "1/sqrt(n)",
+taper.ends = 0.45,
+mod.subset = c(NA),
+...)}
 \arguments{
   \item{x}{a numeric vector of the primary predictor}
   \item{y}{a numeric vector of the response variable}
@@ -23,13 +25,18 @@ parameter estimates, fitting options and bounds}
   \item{existing}{optional logical value specifying whether some of the relevant models
 have already been fitted}
   \item{penaliz}{optional character value to determine how models are ranked (see Details)}
-
+  \item{taper.ends}{numeric representing the proportion of the range of the x variable for which data are extended at 
+the two ends of the data set. This is used in initial estimation (prior to optim and nls optimizations) and can 
+speed up subsequent optimizations by imposing a more pronounced S-shape to both first and second curves. Defaults to 0.45.}
+ \item{mod.subset}{optional vector containing modno of models that the user desires to be estimated. If not NA, only 
+\code{\link{nlsList}} models in mod.subset will be fitted and ranked}
+\item{...}{additional optional arguments to be passed to nlsList}
 }
 \description{This function performs model selection for \code{\link{nlsList}} models fitted using
  \code{\link{SSposnegRichards}}.}
 \details{First, whether parameter M should be fixed
 (see \code{\link{SSposnegRichards}}) is determined by fitting models 12 and 20 and comparing
-their perfomance using \code{\link{extraF}}.
+their perfomance using \code{\link{extraF}}. Note that model 20 is identical to model 32.
 If model 12 provides superior performance (variable values of  M) then 16 models that estimate M
 are run
 (models 1 through 16), otherwise the models with fixed M are fitted (models 21 through 36).
@@ -43,6 +50,12 @@ Specifying forcemod=3 will force model selection to only consider fixed M models
 forcemod=4 will force model selection to consider models with varying values of M only.
 If fitting both models
 12 and 20 fails, fixed M models will be used by default.
+
+taper.ends can be used to speed up optimization as it extends the dataset at maximum and minimum extremes 
+of x by repeatedly pasting the y values at these extremes for a specified proportion of the range of x. 
+taper.ends is a numeric value representing the proportion of the range of x values are extended for and 
+defaults to 0.45 (45%) at both ends. For growth analysis, where the end of the curves are more likely to 
+tend towards a zero slope this is a suitable values. If tapered ends are not desirable then choose taper.ends = 0.
 
 Models are ranked by modified pooled residual square error. By default residual standard error
 is divided by the square root of sample size. This exponentially penalizes models for which very few
@@ -61,7 +74,14 @@ The naming convention for models is a concatenation of 'richardsR', the modno an
 which is shortened in the matrix output, where the number of parameters has been
 pasted in parentheses to allow users to easily distinguish the more general model from
 the more reduced model
-(see \code{\link{extraF}} and \code{\link{SSposnegRichards}}).}
+(see \code{\link{extraF}} and \code{\link{SSposnegRichards}}).
+
+For extra flexibility, mod.subset can specify a vector of modno values (a number of different models) that 
+can be fitted in \code{\link{nlsList}} and then evaluated by model selection. This prevents fitting of unwanted models or
+attempts to fit models that are known to fail. If the \code{\link{nlsList}} model already exists it will not be refitted 
+and thus existing models can be included in the ranking table without adding noticeably to processing time.
+
+}
 
 \author{Stephen Oswald <ozsao23@hotmail.com>}
 \note{If appropriate bounds (or starting parameters) are not available in the list specified by the variable supplied 
