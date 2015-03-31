@@ -4,11 +4,13 @@
 
 \usage{
 extraF(submodel = 1,
-genmodel = 1)
+genmodel = 1,
+warn = TRUE)
 }
 \arguments{
   \item{submodel}{\eqn{nlsList} model with fewer curve parameters (reduced model)}
   \item{genmodel}{\eqn{nlsList} model with more curve parameters (general model)}
+   \item{warn}{logical specifying whether to report working R environment if previously exists}
 }
 \description{Function to compare two nested models using extra sum-of-squares F-Tests.}
 \details{
@@ -46,7 +48,7 @@ demonimator degrees of freedom, P value and the residual sum of squares for both
 and reduced models}
 \references{Ritz, C. and Streibigg, J. C. (2008) \eqn{Nonlinear regression with R.}
 Springer-Verlag, New York.}
-\author{Stephen Oswald <ozsao23@hotmail.com>}
+\author{Stephen Oswald <steve.oswald@psu.edu>}
 
 
 
@@ -56,16 +58,14 @@ Springer-Verlag, New York.}
 \code{\link{pn.mod.compare}}}
 \examples{
    #compare two nested nlsList models (4 vs 8 parameter models)
-\donttest{
-   data(posneg.data)
-   modpar(posneg.data$age, posneg.data$mass, pn.options.name = "myoptions")
+   modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions")
    # (only first 4 group levels in data used for example's sake)
    subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 53)
    richardsR2.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-     Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,modno = 2, pn.options = myoptions)
+     Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,modno = 2, pn.options = "myoptions")
                         , data = subdata)
    richardsR12.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-     Infl = Infl, M = M, modno = 12, pn.options = myoptions)
+     Infl = Infl, M = M, modno = 12, pn.options = "myoptions")
                         , data = subdata)
-   extraF(richardsR12.lis, richardsR2.lis)}
+   extraF(richardsR12.lis, richardsR2.lis)
 }

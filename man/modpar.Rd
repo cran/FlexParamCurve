@@ -22,6 +22,7 @@ suppress.text = FALSE,
 taper.ends = 0.45,
 width.bounds = 1,
 bounds.error = FALSE,
+Envir = .GlobalEnv,
 ...)
 }
 \arguments{
@@ -52,7 +53,8 @@ Large values may slow or terminate computations, however they could better accom
 parameter values.}
  \item{bounds.error}{a logical. If true parameter estimation will terminate if initial estimation of parameters leads to
 values outside specified bounds in pn.options. If false, more appropriate bounds will be determined automatically.}
-\item{...}{additional optional arguments to be passed to nlsList}
+ \item{Envir}{a valid R environment to find pn.options in and export any output to, by default this is the global environment} 
+ \item{...}{additional optional arguments to be passed to nlsList}
 
 }
 \details{
@@ -61,8 +63,8 @@ holds estimates of values for all 8 FlexParamCurve parameters, fitting options a
 fitting and solving double-Richards curves with \code{\link{SSposnegRichards}} and \code{\link{posnegRichards.eqn}},
 respectively. Parameter bounds are the maximum and minimum parameters values that can be used by \code{\link{optim}}
 and \code{\link{nls}} during parameter estimation. For definitions of parameters see either \code{\link{SSposnegRichards}} 
-or \code{\link{posnegRichards.eqn}}. The list is written automatically by the function but 
-it is also output as a return value for assignation in the usual way [myoptions<- change.pnparameters(...)].
+or \code{\link{posnegRichards.eqn}}. The list is written automatically by the function (to ".pntemplist") but it is
+also output as a return value for assignation and subsequent use in the usual way [myoptions<- change.pnparameters(...)].
 
 Estimates are produced by fitting positive-negative or double Richards curves in
 \code{\link{nls}} using
@@ -129,20 +131,26 @@ This option will be saved in the list object specified  by \code{pn.options} and
 \value{a \code{\link{list}} of estimated fixed values for all
 above arguments}
 
-\author{Stephen Oswald <ozsao23@hotmail.com>}
-
+\author{Stephen Oswald <steve.oswald@psu.edu>}
+ \note{
+  Version 1.5 saves many variables, and internal variables in the package environment:
+  FlexParamCurve:::FPCEnv. By default, the pn.options file is copied to the environment
+  specified by the functions (global environment by default). Model selection routines
+  also copy from FPCenv to the global environment all nlsList models fitted during 
+  model selection to provide backcompatibility with code for earlier versions. The user
+  can redirect the directory to copy to by altering the Envir argument when calling the 
+  function.
+ }
 
 
 
 \examples{
 # estimate fixed parameters use data object posneg.data
-   	 data(posneg.data)
    	 modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions")
 
 # estimate fixed parameters use data object posneg.data (only first 
 # 4 group levels for example's sake) and specify a fixed hatching 
 # mass for curve optimization using \code{\link{SSposnegRichards}}
-\donttest{
 	 modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions")
    	 subdata <- subset(posneg.data,posneg.data$id == as.character(36)
 	    		| posneg.data$id == as.character(9) 
@@ -150,32 +158,28 @@ above arguments}
 	    		| posneg.data$id == as.character(43))
 	 richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, 
 	         K = K, Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri, 
-        	 modno = 22, pn.options = "myoptions"), data = subdata)}
+        	 modno = 22, pn.options = "myoptions"), data = subdata)
    		 
-# fit a two component model - enter your own data in place of "mydata"
-\donttest{
-\dontrun{
- 	modpar(mydata$x,mydata$y,twocomponent.x=TRUE, pn.options = "myoptions") # if x of intersection unknown
- 	modpar(mydata$x,mydata$y,twocomponent.x=75, pn.options = "myoptions") # if x of intersection = 75
- 	richardsR1.nls <- nls(y~ SSposnegRichards(x, Asym = Asym, K = K,
-  		 Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1, pn.options = "myoptions")
-                        , data = mydata)
-}
-}
 
 # force an 8 parameter estimate on logistic data
-\donttest{data(logist.data)
 modpar(logist.data$age,logist.data$mass,force8par=TRUE, pn.options = "myoptions")
-}
+
 
 # force an 4 parameter model on logistic data
-\donttest{data(logist.data)
 modpar(logist.data$age,logist.data$mass,force4par=TRUE, pn.options = "myoptions")
-}
 
 # troubleshoot the fit of a model 
-\donttest{data(posneg.data)
 modpar(posneg.data$age,posneg.data$mass,verbose=TRUE, pn.options = "myoptions")
-}
 
+# fit a two component model - enter your own data in place of "mydata"
+        # this details an approach but is not run for want of appropriate data
+        # if x of intersection unknown
+        \dontrun{
+ 	modpar(mydata$x,mydata$y,twocomponent.x=TRUE, pn.options = "myoptions")
+        # if x of intersection = 75
+ 	modpar(mydata$x,mydata$y,twocomponent.x=75, pn.options = "myoptions")
+ 	richardsR1.nls <- nls(y~ SSposnegRichards(x, Asym = Asym, K = K,
+                 Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM,
+                 modno = 1, pn.options = "myoptions")
+                 , data = mydata)}
 }

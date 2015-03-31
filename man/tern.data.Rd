@@ -8,7 +8,7 @@
   days of age collected at at Grays Beach, MA, in 1973 (Nisbet 1975) and
   Monomoy, MA, in 1975 (Nisbet et al. 1978)
 }
-\usage{data(tern.data)}
+\usage{tern.data}
 \format{
   This object of class \code{c("nfnGroupedData", "nfGroupedData",
     "groupedData", "data.frame")} containing the following columns:
@@ -66,17 +66,17 @@
 }
 \examples{
 require(stats); require(graphics)
-data(tern.data)
-\donttest{
-modpar(tern.data$ckage, tern.data$weight, force4par = TRUE, pn.options = "myoptions") #create pnmodelparams for fixed parameters
+tern.data
+#create pnmodelparams for fixed parameters
+modpar(tern.data$ckage, tern.data$weight, force4par = TRUE, pn.options = "myoptions")
 plot(weight ~ ckage, data = tern.data, subset = bandid == tern.data$bandid[1],
      xlab = "Chick age (day)", las = 1,
      ylab = "Chick mass (g)",
      main = "tern.data and fitted curve (Chick #156 only)")
-fm1 <- nls(weight ~ SSposnegRichards(ckage,Asym=Asym,K=K,Infl=Infl,modno=32, pn.options= "myoptions"),
+fm1 <- nls(weight ~ SSposnegRichards(ckage,Asym=Asym,K=K,Infl=Infl,modno=32,
+           pn.options= "myoptions"),
            data = tern.data, subset = bandid == tern.data$bandid[1])
 ckage <- seq(0, 30, length.out = 101)
 lines(ckage, predict(fm1, list(ckage = ckage)))
-}
 }
 \keyword{datasets}

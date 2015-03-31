@@ -13,6 +13,22 @@ RAsym = NA,
 Rk = NA,
 Ri = NA,
 RM = NA,
+Amin = NA,
+Amax = NA,
+Kmin = NA,
+Kmax = NA,
+Imin = NA,
+Imax = NA,
+Mmin = NA,
+Mmax = NA,
+RAmin = NA,
+RAmax = NA,
+Rkmin = NA,
+Rkmax = NA,
+Rimin = NA,
+Rimax = NA,
+RMmin = NA,
+RMmax = NA,
 first.y = NA,
 x.at.first.y = NA,
 last.y = NA,
@@ -20,7 +36,8 @@ x.at.last.y = NA,
 twocomponent.x = NA,
 verbose = NA,
 force4par = NA,
-pn.options)
+pn.options,
+Envir = .GlobalEnv)
 }
 \arguments{
   \item{Asym}{a numeric value for the asymptote of the positive (increasing) curve}
@@ -31,6 +48,22 @@ pn.options)
   \item{Rk}{a numeric value for the rate parameter of the negative (decreasing) curve}
   \item{Ri}{a numeric value for the point of inflection of the negative (decreasing) curve}
   \item{RM}{a numeric value for the shape parameter of the negative (decreasing) curve}
+    \item{Amin}{a numeric value for the minimum bound of Asym}
+    \item{Amax}{a numeric value for the maximum bound of Asym}
+    \item{Kmin}{a numeric value for the minimum bound of K}
+    \item{Kmax}{a numeric value for the maximum bound of K}
+    \item{Imin}{a numeric value for the minimum bound of Infl}
+    \item{Imax}{a numeric value for the maximum bound of Infl}
+    \item{Mmin}{a numeric value for the minimum bound of M}
+    \item{Mmax}{a numeric value for the maximum bound of M}
+    \item{RAmin}{a numeric value for the minimum bound of RAsym}
+    \item{RAmax}{a numeric value for the maximum bound of RAsym}
+    \item{Rkmin}{a numeric value for the minimum bound of Rk}
+    \item{Rkmax}{a numeric value for the maximum bound of Rk}
+    \item{Rimin}{a numeric value for the minimum bound of Ri}
+    \item{Rimax}{a numeric value for the maximum bound of Ri}
+    \item{RMmin}{a numeric value for the minimum bound of RM}
+    \item{RMmax}{a numeric value for the maximum bound of RM}
   \item{first.y}{the value of y at minimum x when it is required to be constrained}
   \item{x.at.first.y}{the final value of x - 0 value is used if not specified when last.y is not NA}
   \item{last.y}{the value of y at maximum x when it is required to be constrained}
@@ -45,6 +78,7 @@ parameters should be returned during when using SSposnegRichards }
 should be ignored - effectively using simple Richards curve}
   \item{pn.options}{required character string specifying the name of a list object currently 
   populated with starting parameter estimates, fitting options and bounds to be modified}
+   \item{Envir}{a valid R environment to find pn.options in, by default this is the global environment} 
 }
 \details{This function provides a simple way for the user to update
 the a user-named list that holds fixed values and options
@@ -62,14 +96,22 @@ to estimate values for all parameters and easily generate a suitable list. See  
 \value{a \code{\link{list}} of values for all above arguments,
 with new values substituted where specified in the call}
 
-\author{Stephen Oswald <ozsao23@hotmail.com>}
-\note{Requires \code{\link{modpar}} to be have been run prior to execution    }
+\author{Stephen Oswald <steve.oswald@psu.edu>}
+\note{Requires \code{\link{modpar}} to be have been run prior to execution   
+
+  Version 1.5 saves many variables, and internal variables in the package environment:
+  FlexParamCurve:::FPCEnv. By default, the pn.options file is copied to the environment
+  specified by the functions (global environment by default). Model selection routines
+  also copy from FPCenv to the global environment all nlsList models fitted during 
+  model selection to provide backcompatibility with code for earlier versions. The user
+  can redirect the directory to copy to by altering the Envir argument when calling the 
+  function.
+ }
 
 
 \seealso{\code{\link{modpar}} \code{\link{SSposnegRichards}} \code{\link{posnegRichards.eqn}}}
 \examples{
 # change all fixed values except K and Rk
-    data(posneg.data)
     modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions")
     change.pnparameters(Asym = 10000, Infl = 80, M = 5, RAsym = 10000, 
         Ri = 240, RM = 5, pn.options = "myoptions")

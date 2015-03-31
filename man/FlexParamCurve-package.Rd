@@ -10,7 +10,9 @@
     1) Run \eqn{modpar} to produce initial parameter estimates and estimates of parameter bounds for your dataset. 
 These are used to accomodate fixed parameters and are saved in user-specified \code{\link{list}} object
 All parameters and options in this list can be edited manually or using \eqn{change.pnparameters}. The
-list could be created manually given that the elements were labelled sufficiently.
+list could be created manually given that the elements were labelled sufficiently. Note that this step is 
+unnecessary when using the model selection routines \eqn{pn.mod.compare} and \eqn{pn.modselect.step} as they
+will automatically call \eqn{modpar} if parameter estimates are missing.
 
     2) Determine most appropriate model (number of necessary parameters) for your data
 using  \eqn{pn.mod.compare} or \eqn{pn.modselect.step} (these rank competing model and then compare nested models using
@@ -65,77 +67,93 @@ this list, either manually or using \code{\link{change.pnparameters}}.
       performs extra sum-of-squares F test for two nested nls models
         }
  \tabular{ll}{Package: \tab FlexParamCurve\cr
-Type: \tab Package\cr
 Title: \tab Tools to Fit Flexible Parametric Curves\cr
-Version: \tab 1.4-3\cr
-Date: \tab 2012-09-23\cr
-Author: \tab Stephen Oswald\cr
-Maintainer: \tab Stephen Oswald <ozsao23@hotmail.com>\cr
+Version: \tab 1.5-2\cr
+Date: \tab 2015-03-31\cr
+Author: \tab Stephen Oswald [aut, cre]\cr
+Maintainer: \tab Stephen Oswald <steve.oswald@psu.edu>\cr
 License: \tab GPL-2\cr
 Depends: \tab nlme\cr
-Enhances: \tab nlme\cr
 LazyLoad: \tab yes\cr}
 }
-\references{## Oswald, S.A. et al. (Early view) FlexParamCurve: R package for flexible
-     fitting of nonlinear parametric curves. Methods in Ecology and Evolution.
+\references{## Oswald, S.A. et al. 2012. FlexParamCurve: R package for flexible
+         \preformatted{
+     fitting of nonlinear parametric curves. Methods in Ecology and Evolution. 3(6): 1073-77.
      doi: 10.1111/j.2041-210X.2012.00231.x (see also tutorial and introductory videos at:
-     http://www.methodsinecologyandevolution.org/view/0/podcasts.html
-     (posted September 2012 - if no longer at this link, check the archived videos at:
-     http://www.methodsinecologyandevolution.org/view/0/VideoPodcastArchive.html#allcontent
+     http://www.methodsinecologyandevolution.org/view/0/podcasts.html 
+     posted September 2012 - if no longer at this link, check the archived videos at:
+     http://www.methodsinecologyandevolution.org/view/0/VideoPodcastArchive.html#allcontent)
+                      }
 }     
 \examples{
+#Code is provided here for an illustrative overview of using FlexParamCurve to select,  
+# fit, analyze and plot the most appropriate non-linear curves for a dataset.
+# NOTE: autorun is disabled for these examples since more detailed examples are provided for the 
+# individual functions in their associated help files and runtime for this overview approximates 
+# 5 mins. To run, simply copy and paste code from this help file into the R GUI.
+
 # run all-model selection for posneg.data object (Step 2) without need to run any previous functions
-\donttest{
-data(posneg.data)
-modseltable <- pn.mod.compare(posneg.data$age, posneg.data$mass,
+\dontrun{  
+    modseltable <- pn.mod.compare(posneg.data$age, posneg.data$mass,
     posneg.data$id, existing = FALSE, pn.options = "myoptions")}
 
-# run backwards stepwise model selection (Step 2) for logist.data object without need to run any previous functions
-\donttest{
-data(logist.data)
-modseltable <- pn.modselect.step(logist.data$age, logist.data$mass,
+# run backwards stepwise model selection (Step 2) for logist.data object
+#without need to run any previous functions
+\dontrun{  
+    modseltable <- pn.modselect.step(logist.data$age, logist.data$mass,
     logist.data$id, existing = FALSE, pn.options = "myoptions")}
 
 # estimate fixed parameters use data object posneg.data (Step 1)
-\donttest{
-modpar(posneg.data$age,posneg.data$mass, pn.options = "myoptions")}
+\dontrun{  
+     modpar(posneg.data$age,posneg.data$mass, pn.options = "myoptions")}
 
 # change fixed values of M and constrain hatching mass to 45.5 in a growth curve (Step 1)
-\donttest{
-change.pnparameters(M=1,RM=0.5,first.y=45.5, pn.options = "myoptions")}
+\dontrun{  
+      change.pnparameters(M=1,RM=0.5,first.y=45.5, pn.options = "myoptions")}
     
 # fit nlsList object using 6 parameter model with values M and RM (Step 3)
 # fixed to value in pnmodelparams and then fit nlme model
-\donttest{
+\dontrun{  
 richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
       Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri,
       modno = 22, pn.options = "myoptions"), data = posneg.data)
- richardsR22.nlme <- nlme(richardsR22.lis, random = pdDiag(Asym + Infl ~ 1))}
+richardsR22.nlme <- nlme(richardsR22.lis, random = pdDiag(Asym + Infl ~ 1))}
  
 # fit reduced nlsList model and then compare performance with extraF (manual version of Step 2)
-\donttest{
-richardsR20.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
+\dontrun{  
+ richardsR20.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
       Infl = Infl, modno = 20, pn.options = "myoptions"), data = posneg.data)
  extraF(richardsR20.lis,richardsR22.lis)}
  
- # fit and plot a logistic curve (M=1) to data, note that all parameters set to equal 1 here are ignored
- # note code here forces \eqn{modpar} to only estimate 4 curve parameters (simple Richards curve)
-\donttest{
-data(logist.data)
-modpar(logist.data$age,logist.data$mass,force4par=TRUE, pn.options = "myoptions")#create list for fixed parameters
-change.pnparameters(M=1) # set M to 1 for subsequent fit
+# fit and plot a logistic curve (M=1) to data, note - all parameters set to 1 are ignored
+# note code here forces \eqn{modpar} to only estimate 4 curve parameters (simple Richards curve)
+#create list for fixed parameters
+\dontrun{  
+modpar(logist.data$age,logist.data$mass,force4par=TRUE, pn.options = "myoptions")
+change.pnparameters(M=1, pn.options = "myoptions") # set M to 1 for subsequent fit
 richardsR20.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
       Infl = Infl, modno = 20, pn.options = "myoptions"), data = logist.data)
 plot(logist.data$age , logist.data$mass, xlab = "age", ylab = "mass", pch = ".", cex = 0.7) 
-par <- coef( richardsR20.nls )
+par <- coef( richardsR20.nls )}
+
 #(Step 4)
-curve(posnegRichards.eqn(x, Asym = par[1], K = par[2], Infl = par[3], modno = 20), add= TRUE, pn.options = "myoptions")}
+\dontrun{  
+curve(posnegRichards.eqn(x, Asym = par[1], K = par[2], Infl = par[3], modno = 20
+, pn.options = "myoptions"), add= TRUE)}
 }
 \seealso{\code{\link{nlme}}
 \code{\link{SSlogis}}
 }
-\author{Stephen Oswald <ozsao23@hotmail.com>}
-
+\author{Stephen Oswald <steve.oswald@psu.edu>}
+ \note{
+  Version 1.5 saves many variables, and internal variables in the package environment:
+  FlexParamCurve:::FPCEnv. By default, the pn.options file is copied to the environment
+  specified by the functions (global environment by default). Model selection routines
+  also copy from FPCenv to the global environment all nlsList models fitted during 
+  model selection to provide backcompatibility with code for earlier versions. The user
+  can redirect the directory to copy to by altering the Envir argument when calling the 
+  function.
+ }
 \keyword{
 Curve fit
 Parametric curves

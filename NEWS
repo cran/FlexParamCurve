@@ -1,0 +1,134 @@
+R News
+
+CHANGES IN FlexParamCurve 1.5-1:
+
+
+    * IMPORTANT: Change in the use of the Global Environment
+
+      In previous versions, FlexParamCurve has automatically written the pn.options 
+      file (with fitting estimates and user custom fitting instructions) to the 
+      Global Environment. Additionally, the model selection routines outputed all the 
+      fitted nlsList models to the Global Environment. To comform to R good practice 
+      for packages, the user can now specify that the Global Environment is not
+      written to. To make this version back-compatible with previous FlexParamCurve 
+      versions, the default is to write to the Global Environment but this can be 
+      switched off setting the parameter Envir to a value for an alternative 
+      environment to write to. Internal parameters are written to the namespace 
+      environment, FlexParamCurve:::FPCEnv. This applies to the following function
+      calls: modpar(), SSposnegRichards(), pn.mod.compare(), pn.modselect.step(), 
+      posnegRichards.eqn() and change.pnparameters().
+      
+    * Addition of new function: get.mod(). 
+      
+      This is mostly used internally but can be
+      used by user to copy files from one environment to another. By default this will
+      copy files output from model selection routines (pn.mod.compare() and
+      pn.modselect.step() ) from the packge namespace to the global environment.
+      
+    * Correction of faulty examples. 
+    
+      FlexParamCurve v1.4-3 was archived for reason of failing
+      examples. These have been revised accordingly and pass appropriate tests.
+
+    * Addition of a NEWS file
+
+      This file contains news for all recent versions of FlexParamCurve
+      that were previously found at https://pennstate.academia.edu/SteveOswald/Posts
+      Please check this website for instant updates
+
+    * Use of Lazy Loading for data files
+
+      The package now uses lazyloading for all data files used in examples. Thus all data
+      files can be used directly without the need to call data() beforehand.
+
+    * Bug fix for SSposnegRichards
+
+      Correction of a problem for selection routines pn.mod.compare and pn.modselect.step
+      that was caused by failing to specify taper.ends values explicitly when initially
+      running modpar. These two selection routines will now work alone whether specifying
+      taper.ends or not and regardless of previous runs of modpar.
+
+
+   * Error message update in pn.modselect.step
+    
+      Addition of informative error message for this selection routine if no nlsList models are
+      are successfully fitted - induces safe termination of the routine with appropriate error message.
+
+
+CHANGES IN FlexParamCurve 1.4-3:
+
+   * FlexParamCurve Documentation available: Paper, Online Tutorial and Introduction to the R package.
+
+        Methods in Ecology and Evolution recently published a showcase paper on FlexParamCurve
+        and is hosting two videos on the package, as online extras.
+
+        These include a ~8 min introduction as to the purpose and utility of the package 
+        and a 12 min tutorial in R running you through some of the main functions in FlexParamCurve, 
+        including curve selection, model plotting and using FlexParamCurve models within mixed effects models.
+
+         Paper is available at: 
+          http://onlinelibrary.wiley.com/doi/10.1111/j.2041-210X.2012.00231.x/abstract
+          Videos can be found at: http://www.methodsinecologyandevolution.org/view/0/podcasts.html
+
+   * Major code updates have been made to the package in this version
+
+	selfStart (SSposnegRichards) and model selection routines run ~ 10 x faster and are more reliable!
+
+	more user-options to modpar and model selection routines to allow:
+	  
+	  tapering at either end of the curve (taper.ends) 
+          
+          custom specification of parameter bounds (width.bounds)
+          
+          passing arguments to nls and nlsList within modpar
+          
+          automated bounds expansion for data exhibiting very different curves between     
+            different levels
+
+
+CHANGES IN FlexParamCurve 1.4-0
+
+   * modpar and SSposnegRichards require users to specify the name of a list object to write model
+     parameters and fitting options to, so that multiple models can be fitted alternatively within one session.
+
+   * Various inconsistent names of functions have been updated.
+
+   * This new version is showcased in a forthcoming Methods in Ecology and Evolution Application
+     paper: http://www.methodsinecologyandevolution.org/view/0/accepted.html
+
+   * Thanks to Timothy Paine for his helpful suggestions that refined this version of FlexParamCurve.
+
+
+CHANGES IN FlexParamCurve 1.2
+
+   * Significant improvement in the accuracy of optimizations so this version is to be
+    prefered over v1.1. As in version 1.1, it can be used for a variety of complex parameteric growth curves
+    or any relationships that exhibit multiple S-shaped curves between predictors and response variables. 
+
+   * Added flexibility to model curves that follow a very general double-Richards type
+     (not just positive-negative trajectory), e.g. it can now perform double-positive
+     (or double-negative formulations), e.g. Meyer, P.(1994) Bi-logistic growth.
+     Technological Forecasting and Social Change. 47: 89-102) 
+
+   * Ability to model two component models (where separate curves do not interact) as well as
+     the traditional double curves. e.g. of two component models: Ross, J.L. et al. (1994) Age,
+     growth, mortality, and reproductive biology of red drums in North Carolina waters. Transactions
+     of the American Fisheries Society 124: 37-54. OR Murphy, S. et al. (2009) Importance of biological'
+     parameters in assessing the status of Delphinus delphis. Marine Ecology Progress Series 388: 273-291. 
+
+   * It can estimate double-positive richards and double negative richards and should be able to accomodate
+     a wide variety of data [if you have a dataset that doesn't fit then let me know and I'll work it in].
+     It is slightly slower for more complex datasets: speeding up optimization algorithms is in the pipeline. 
+
+   * Option "verbose" added for use in modpar and SSposnegRichards to allow trouble shooting. 
+
+
+CHANGES IN FlexParamCurve 1.1	
+
+  *  I am happy to announce that the FlexParamCurve R package is now available
+     on CRAN (http://cran.r-project.org/web/packages/FlexParamCurve/index.html). 
+
+  * This package provides a flexible selfStart function and model selection tools for fitting nls, nlsList and nlme models for data that follow positive and negative trajectories. The package was designed with growth analysis (see Huin & Prince 2000. Chick Growth in Albatrosses: Curve Fitting with a Twist. J. Avian Biol. 31(3): 418-425) in mind but provides support for any curve-fitting requiring combined positive-negative trajectories. 
+
+  * It can be downloaded directly from R in the usually way: 
+    install.packages("FlexParamCurve") 

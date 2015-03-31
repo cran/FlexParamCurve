@@ -54,7 +54,6 @@ structure(function # Compare Two \eqn{nls} Models Using Extra Sum-of-Squares F-T
 }
 , ex = function(){
 #fit and compare two nested nls models (7 vs 8 parameter models)
-   data(posneg.data)
    modpar(posneg.data$age, posneg.data$mass) #create pnmodelparams for fixed parameters
    richardsR1.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
    Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1)

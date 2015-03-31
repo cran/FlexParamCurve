@@ -13,7 +13,8 @@ Rk = NA,
 Ri = NA,
 RM = NA,
 modno,
-pn.options)
+pn.options,
+Envir = ".GlobalEnv")
 }
 \arguments{
   \item{x}{a numeric vector of the primary predictor
@@ -40,6 +41,10 @@ number of the equation to be fitted}
   \item{pn.options}{character string specifying name of 
 \code{\link{list}} object populated with starting 
 parameter estimates, fitting options and bounds}
+  \item{Envir}{a character vector that represents the valid R environment in which to 
+   find pn.options in and write any output to,
+   by default this is the global environment} 
+
 
 }
 \description{This selfStart function evaluates a range of flexible logistic
@@ -106,7 +111,7 @@ parameter estimates, fitting options and bounds}
      19      see below
      20      see below                           
      21            Y     Y    Y    Y    7 parameter model, 4 recession params
-     22            Y     Y    Y		6 parameters (used for double-logistic, double-Gompertz or double-Von Bertalannfy)
+     22            Y     Y    Y		6 parameter (double-logistic/double-Gompertz/double-Von Bertalannfy)
      23                       Y    Y
      24            Y               Y
      25                            Y
@@ -156,7 +161,9 @@ parameter estimates, fitting options and bounds}
          
      \preformatted{richardsR20.lis <- nlsList(mass ~ SSposnegRichards(age,
          Asym = Asym, K = K, Infl = Infl, modno = 2), data = logist.data)
-         #incorrect call missing required parameters, function terminates and generates an error message}
+         #incorrect call missing required parameters, 
+         #function terminates and generates an error message
+         }
     
      Examples for all models can be found in the list object
      \code{\link{posnegRichards.calls}}.
@@ -205,10 +212,13 @@ parameter estimates, fitting options and bounds}
      stored in \code{pnmodelparams}; see \code{\link{modpar}}}
 \references{## Oswald, S.A. et al. (Early view) FlexParamCurve: R package for flexible
      fitting of nonlinear parametric curves. Methods in Ecology and Evolution.
-     doi: 10.1111/j.2041-210X.2012.00231.x (see also tutorial and introductory videos at:
+ \preformatted{
+     doi: 10.1111/j.2041-210X.2012.00231.x 
+     (see also tutorial and introductory videos at:
      http://www.methodsinecologyandevolution.org/view/0/podcasts.html
      (posted September 2012 - if no longer at this link, check the archived videos at:
      http://www.methodsinecologyandevolution.org/view/0/VideoPodcastArchive.html#allcontent
+               }
 	 #1# Nelder, J.A. (1962) Note: an alternative form of a generalized
      logistic equation. Biometrics, 18, 614-616.
          #2#
@@ -233,7 +243,7 @@ parameter estimates, fitting options and bounds}
      	 #8#
      Singh et al. (In press) From migration to nomadism: movement variability in a northern
      ungulate across its latitudinal range. Ecological Applications.}
-\author{Stephen Oswald <ozsao23@hotmail.com>}
+\author{Stephen Oswald <steve.oswald@psu.edu>}
 \note{Any models that require parameter fixing (i.e. all except #1)
      extract appropriate values from the object \code{pnmodelparams} for the fixed
      parameters. This object is created by running
@@ -262,6 +272,14 @@ parameter estimates, fitting options and bounds}
      issues.
     
      Speed of the function depends on the complexity of the data being fit.
+     
+       Version 1.5 saves many variables, and internal variables in the package environment:
+       FlexParamCurve:::FPCEnv. By default, the pn.options file is copied to the environment
+       specified by the functions (global environment by default). Model selection routines
+       also copy from FPCenv to the global environment all nlsList models fitted during 
+       model selection to provide backcompatibility with code for earlier versions. The user
+       can redirect the directory to copy to by altering the Envir argument when calling the 
+       function.
 }
 
 
@@ -273,8 +291,7 @@ parameter estimates, fitting options and bounds}
  require(graphics)
     # retrieve mean estimates of 8 parameters using getInitial
     # and posneg.data object
-    data(posneg.data)
-    modpar(posneg.data$age, posneg.data$mass,verbose=TRUE, pn.options = "myoptions", wide.bounds=TRUE)
+    modpar(posneg.data$age, posneg.data$mass,verbose=TRUE, pn.options = "myoptions", width.bounds=2)
     getInitial(mass ~ SSposnegRichards(age, Asym, K, Infl, M, 
         RAsym, Rk, Ri, RM, modno = 1, pn.options = "myoptions"), data = posneg.data)
 
@@ -290,14 +307,17 @@ parameter estimates, fitting options and bounds}
         RM = pars[5],  modno = 24, pn.options = "myoptions"), xlim = c(0, 
         200), add = TRUE)
     
-    # retrieve mean estimates and produce plot to illustrate fit for custom model 17
-    \donttest{
-    \dontrun{    pars<-as.numeric( getInitial(mass ~ SSposnegRichards(age, Asym, K, Infl,
+
+    
+        # following example not run as appropriate data are not available in the package
+        # retrieve mean estimates and produce plot to illustrate fit for custom model 17
+     \dontrun{ 
+     pars<-as.numeric( getInitial(mass ~ SSposnegRichards(age, Asym, K, Infl,
            M, RAsym, Rk, Ri, RM, modno = 17, pn.options = "myoptions"), data = datansd) )
      plot(datansd$jday21March, datansd$moosensd)
      curve( posnegRichards.eqn(x, Asym = pars[1], K = 1, Infl = pars[2], 
             M = pars[3], RAsym = pars[4], Rk = 1, Ri = pars[5], RM = pars[6], 
-            modno = 17, pn.options = "myoptions"), lty = 3, xlim = c(0, 200) , add = TRUE)}}
+            modno = 17, pn.options = "myoptions"), lty = 3, xlim = c(0, 200) , add = TRUE)}
         
     # fit nls object using 8 parameter model
     # note: ensure data object is a groupedData object
@@ -305,22 +325,24 @@ parameter estimates, fitting options and bounds}
         K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, 
         RM = RM, modno = 1, pn.options = "myoptions"), data = posneg.data)
         
+
+    # following example not run as it fits very few levels in these data - as noted
+    # such a comprehensive equation is rarely required
     # fit nlsList object using 8 parameter model
     # note: ensure data object is a groupedData object
     # also note: not many datasets require all 8 parameters
-    \donttest{
-    \dontrun{
-    richardsR1.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, 
+         \dontrun{
+         richardsR1.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, 
         K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, 
         RM = RM, modno = 1, pn.options = "myoptions"), data = posneg.data)
-    summary(richardsR1.lis)}}
+    summary(richardsR1.lis)}
 
     # fit nlsList object using 6 parameter model with value M and RM
     # fixed to value in pnmodelparams and then fit nlme model
     # note data is subset to provide estimates for a few individuals
     # as an example
-    subdata <- subset(posneg.data,posneg.data$id == as.character(36)
-   		| posneg.data$id == as.character(9) 
+    subdata <- subset(posneg.data,posneg.data$id == as.character(26)
+   		| posneg.data$id == as.character(1) 
    		| posneg.data$id == as.character(32) 
    		| posneg.data$id == as.character(43))
     richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, 
@@ -332,7 +354,6 @@ parameter estimates, fitting options and bounds}
          
     # fit nls object using simple logistic model, with 
     # M, RAsym, Rk, Ri, and RM fixed to values in pnmodelparams
-    data(logist.data)
     modpar(logist.data$age, logist.data$mass ,force4par = TRUE, pn.options = "myoptions")
     change.pnparameters(M = 1, pn.options = "myoptions") #set to logistic (M =1) prior to fit
     richardsR32.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, 
@@ -340,12 +361,15 @@ parameter estimates, fitting options and bounds}
     coef(richardsR32.nls)
                 
     # fit a two component model - enter your own data in place of "mydata"
-    \donttest{
+    # this is not run for want of an appropriate dataset
+    # if x of intersection unknown
     \dontrun{
-    modpar(mydata$x,mydata$y,twocomponent.x=TRUE, pn.options = "myoptions") # if x of intersection unknown
-    modpar(mydata$x,mydata$y,twocomponent.x=75, pn.options = "myoptions") # if x of intersection = 75
+    modpar(mydata$x,mydata$y,twocomponent.x=TRUE, pn.options = "myoptions")
+    # if x of intersection = 75
+    modpar(mydata$x,mydata$y,twocomponent.x=75, pn.options = "myoptions") 
     richardsR1.nls <- nls(y~ SSposnegRichards(x, Asym = Asym, K = K,
-      Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1, pn.options = "myoptions")
-                       , data = mydata)
+      Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, 
+      modno = 1, pn.options = "myoptions")
+      , data = mydata)
     coef(richardsR1.nls)}
-    }}
+    }

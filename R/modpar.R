@@ -15,10 +15,34 @@ structure(function
                      taper.ends = 0.45,
                      width.bounds = 1,
                      bounds.error = FALSE,
+                     Envir =  .GlobalEnv,
                      ...
                      ) {
+    if(!is.na(pn.options)) {
+    if(is.character(pn.options) == FALSE) stop("character variable name required for pn.options") 
+    			}
     options(warn = -1)
-    assign(".paramsestimated", FALSE, envir = globalenv())
+    if(exists("Envir", mode= "environment") == FALSE) stop("Envir must be a
+    valid R environment (e.g. not a charater variable")
+    savvalue<-NA
+    Envir1 <- try(FPCEnv$env,silent=T)
+    env1ck <- try(is.environment(FPCEnv$env),silent=T)
+    envck <- try(is.environment(Envir),silent=T)
+    env.ck<-2
+    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(env.ck == 2) {
+    modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
+    if(class(modselck)[1] != "try-error" & modselck == TRUE) {
+    if(identical(Envir, Envir1) == FALSE & 
+    	identical(Envir,.GlobalEnv) == TRUE){
+    	Envir <- Envir1
+    	}
+    	}
+    }
+    if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    FPCEnv$env <- Envir
+    FPCEnv$.paramsestimated <- FALSE
     if(!is.na(pn.options)) {
     pnopt<- as.character( pn.options[1] ) 
     } else {
@@ -31,7 +55,7 @@ structure(function
     prntqut( suppress.text, "modpar will attempt to parameterize your data using the following sequential procedures:")
     prntqut( suppress.text, "  (1) Extract parameter estimates for 8-parameter double-Richards curve in nls")
     prntqut( suppress.text, "  (2) Use getInitial to retrieve parameter estimates for 8-parameter double-Richards curve")
-    prntqut( suppress.text, "  (3) Extract parameter estimates for 4-parameter Richards curve in nls")
+    prntqut( suppress.text, "  (3) Extract parameter estimates for 4-parameter Richards curve in ")
     prntqut( suppress.text, "  (4) Use getInitial to retrieve parameter estimates for 4-parameter Richards curve")
     prntqut( suppress.text, "if any approaches are successful, modpar will return these and terminate at that stage")
     prntqut( suppress.text, " ")
@@ -98,14 +122,18 @@ structure(function
     		      			 }
     parseval <- function(txt1,evtxt,txt2) {
     callout<- parse(text=sprintf("%s",paste(txt1,as.character(evtxt),txt2,sep="")))
-    return(eval(callout))
-    					  }
+    options(warn =-1)
+    outpt<- eval(callout)
+    options(warn =0)
+    return(outpt)
+    					  }  					  
     valexp <- formtassign(initval, initval1)
     valexp$taper.ends <- taper.ends
     if(width.bounds != 1) valexp$width.bounds <- width.bounds
     if(bounds.error == TRUE) valexp$bounds.error <- bounds.error
     valexp$modpar <- TRUE
-    assign(pnoptnm, valexp, .GlobalEnv)
+    assign(pnoptnm, valexp, envir = Envir)
+    FPCEnv$pnoptnm <- valexp
     evlfit<-function(val1,val2,force8par,savoptions){
  	richards <- function(x, Asym, K, Infl, M) Asym/Re(as.complex(1 +
     	    M * exp(-K * (x - Infl)))^(1/M))
@@ -131,12 +159,14 @@ structure(function
 	}
 	if(evl1<=evl2) {
 	valfin<-val1
-	assign(pnoptnm, savoptions, .GlobalEnv)
+	assign(pnoptnm, savoptions, envir = Envir)
+	FPCEnv$pnoptnm <- savoptions
 	}else{
 	valfin<-val2
 	}
 	if(length(val2)<5 & length(val1) >4 & force8par == TRUE) valfin <- val1
-	assign(pnoptnm, savoptions, .GlobalEnv)
+	assign(pnoptnm, savoptions, envir = Envir)
+	FPCEnv$pnoptnm <- savoptions
 	return(valfin)
 	}
     value <- NA
@@ -144,12 +174,12 @@ structure(function
     if(force4par == TRUE & is.na(twocomponent.x)) {
      if(detl == FALSE) prntqut( suppress.text, "Estimating parameter bounds....")
       value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
-    	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+    	             K = K, Infl = Infl, M = M, modno = 19,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
     	             silent = detl)
       savvalue<-value
-      value <-NA
+       value <-NA
       if(class(value[1]) == "try-error") stop ("Bounds unestimable")
-      savoptions <- get(pnoptnm, .GlobalEnv)
+      savoptions <- get(pnoptnm, envir = Envir)
     prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
        value <- try(parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
                     K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy, ...))")
@@ -161,11 +191,11 @@ structure(function
           prntqut( suppress.text, "....4-parameter nls fit failed")
           prntqut( suppress.text, "(4) Status of 4-parameter Richards getInitial call:")
          value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
-	             K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+	             K = K, Infl = Infl, M = M, modno = 12,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
 	             silent = detl)
             if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
             stop("estimates not available for data provided. Please check data, call or provide estimates manually, see ?modpar")
-            assign(".paramsestimated", FALSE, envir = globalenv())
+            FPCEnv$.paramsestimated <- FALSE
          					} else {					
          					prntqut( suppress.text, "....4 parameter getInitial successful")
          					}
@@ -176,28 +206,28 @@ structure(function
     if(detl == FALSE) prntqut( suppress.text, "Estimating parameter bounds....")
     value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
                 K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
-            Ri = Ri, RM = RM, modno = 18, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+            Ri = Ri, RM = RM, modno = 18,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
             silent = detl)
      if (is.na(value[1]) == TRUE | class(value)[1] == "try-error"){
         value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
-         	             K = K, Infl = Infl, M = M, modno = 19, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+         	             K = K, Infl = Infl, M = M, modno = 19,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
          	             silent = detl)
              if(class(value[1]) == "try-error") stop ("Bounds unestimable")
-            bndsvals<-get(pnoptnm, .GlobalEnv) 
+            bndsvals<-get(pnoptnm, envir = Envir) 
             initval[1:8] <- value
             initval[13]<-bndsvals[13]
             bndsvals<-bndsvals [16:31]
             bndsvals[9:16]<-bndsvals[1:8]
             valexp <- formtassign( initval , bndsvals)				  
-	    assign(pnoptnm, valexp, .GlobalEnv)
+	    assign(pnoptnm, valexp, envir = Envir)
             			} else {     
       if(class(value[1]) == "try-error") stop ("Bounds unestimable")
     savvalue<-value
       value <-NA
-      savoptions <- get(pnoptnm, .GlobalEnv)    							}
+      savoptions <- get(pnoptnm, envir = Envir)    							}
     if(force4par == TRUE & !is.na(twocomponent.x)) stop("Cannot force a two component model to have 4 parameters")
     prntqut( suppress.text, "(1) Status of 8-parameter double-Richards curve fit in nls:")
-    value <- try(parseval("try(coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
+     value <- try(parseval("try(coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
         K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,
         RM = RM, modno = 1, pn.options =",  pnoptnm,"), data = xy, ...)), silent = detl)"),
         silent=detl)
@@ -206,7 +236,7 @@ structure(function
         prntqut( suppress.text, "(2) Status of 8-parameter double-Richards getInitial call")
         value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
             K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
-            Ri = Ri, RM = RM, modno = 1, pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
+            Ri = Ri, RM = RM, modno = 1,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
             silent = detl)
              if (is.na(value[1]) == FALSE & class(value)[1] != "try-error") {
              		succ <- TRUE
@@ -221,7 +251,7 @@ structure(function
     if ((is.na(value[1]) == TRUE & is.na(twocomponent.x)) | (class(value)[1] == "try-error" & is.na(twocomponent.x)) ) {
         prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
         prntqut( suppress.text, "if force8par==TRUE second curve parameters estimated as RAsym=Asym*0.05, Rk=K, Ri=Infl, RM=M")
-        try({
+         try({
             value <- try(parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
                 K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy, ...))"),
                 silent = detl)
@@ -237,7 +267,7 @@ structure(function
           prntqut( suppress.text, "(4) Status of 4-parameter Richards getInitial call:")
           try({
  	    value <- try(parseval("getInitial(y ~ SSposnegRichards(x, Asym = Asym,
-	             K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy)"), silent = detl)
+	             K = K, Infl = Infl, M = M, modno = 12,  pn.options = ", pnoptnm,"), data = xy)"), silent = detl)
 	    if (force8par == TRUE) {
 	        value <- c(value, -value[1] * 0.05, x - value[2],
 	          value[3], value[4])
@@ -257,13 +287,17 @@ structure(function
     }
     }
     
-    valexp<-get(pnoptnm, .GlobalEnv)
-    assign(pnoptnm, valexp[1:length(valexp)-1], .GlobalEnv)
+    valexp<-get(pnoptnm, envir = Envir)
+    assign(pnoptnm, valexp[1:length(valexp)-1], envir = Envir)
+    FPCEnv$pnoptnm <- valexp[1:length(valexp)-1]
     valexp <- valexp[1:8]
+    options(warn=-1)
+    try(rm("1", envir = Envir), silent =T)
+    try(rm("pnoptnm", envir = FPCEnv), silent =T)
+    options(warn=0)
      return(valexp)
     }
 , ex = function(){
-        data(posneg.data)
         modpar(posneg.data$age,posneg.data$mass)
 
         modpar(posneg.data$age,posneg.data$mass)

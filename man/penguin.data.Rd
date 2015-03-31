@@ -8,7 +8,7 @@
   days of age collected at Philip Island, Victoria, Australia in 2000 and 2002
   (see Chiaradia & Nisbet 2006).
 }
-\usage{data(penguin.data)}
+\usage{penguin.data}
 \format{
   This object of class \code{c("nfnGroupedData", "nfGroupedData",
     "groupedData", "data.frame")} containing the following columns:
@@ -62,17 +62,16 @@
 }
 \examples{
 require(stats); require(graphics)
-data(penguin.data)
-\donttest{
+penguin.data
 modpar(penguin.data$ckage, penguin.data$weight, pn.options = "myoptions")
 plot(weight ~ ckage, data = penguin.data, subset = bandid == penguin.data$bandid[1],
      xlab = "Chick age (day)", las = 1,
      ylab = "Chick mass (g)",
      main = "penguin.data and fitted curve (Chick #307 only)")
-fm1 <- nls(weight ~ SSposnegRichards(ckage,Asym=Asym,K=K,Infl=Infl, RAsym=RAsym,modno=31, pn.options= "myoptions"),
+fm1 <- nls(weight ~ SSposnegRichards(ckage,Asym=Asym,K=K,Infl=Infl, RAsym=RAsym,
+           modno=31, pn.options= "myoptions"),
            data = penguin.data, subset = bandid == penguin.data$bandid[1])
 ckage <- seq(0, 74, length.out = 101)
 lines(ckage, predict(fm1, list(ckage = ckage)))
-}
 }
 \keyword{datasets}

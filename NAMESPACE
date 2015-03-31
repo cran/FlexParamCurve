@@ -1,4 +1,5 @@
 import(nlme)
 
-exportPattern("^[[:alpha:]]+")
-
+export(SSposnegRichards, modpar, pn.mod.compare, pn.modselect.step)
+export(posnegRichards.eqn, change.pnparameters, extraF, extraF.nls)
+export(get.mod)

@@ -12,14 +12,16 @@ existing = FALSE,
 penaliz = "1/sqrt(n)",
 taper.ends = 0.45,
 mod.subset = c(NA),
-...)}
+Envir = .GlobalEnv,
+...)
+}
 \arguments{
   \item{x}{a numeric vector of the primary predictor}
   \item{y}{a numeric vector of the response variable}
   \item{grp}{a factor of same length as x and y that distinguishes groups within
 the dataset}
   \item{pn.options}{required character string specifying name of 
-  \code{\link{list}} object populated with starting 
+\code{\link{list}} object populated with starting 
 parameter estimates, fitting options and bounds}
   \item{forcemod}{optional numeric value to constrain model selection (see Details)}
   \item{existing}{optional logical value specifying whether some of the relevant models
@@ -30,6 +32,8 @@ the two ends of the data set. This is used in initial estimation (prior to optim
 speed up subsequent optimizations by imposing a more pronounced S-shape to both first and second curves. Defaults to 0.45.}
  \item{mod.subset}{optional vector containing modno of models that the user desires to be estimated. If not NA, only 
 \code{\link{nlsList}} models in mod.subset will be fitted and ranked}
+ \item{Envir}{a valid R environment to find pn.options in and export any output to, by default this is the global
+ environment} 
 \item{...}{additional optional arguments to be passed to nlsList}
 }
 \description{This function performs model selection for \code{\link{nlsList}} models fitted using
@@ -83,37 +87,48 @@ and thus existing models can be included in the ranking table without adding not
 
 }
 
-\author{Stephen Oswald <ozsao23@hotmail.com>}
+\author{Stephen Oswald <steve.oswald@psu.edu>}
 \note{If appropriate bounds (or starting parameters) are not available in the list specified by the variable supplied 
 to \code{pn.options}, \code{\link{modpar}} will be called automatically prior to model selection. 
 During selection, text is output to the screen to inform the user of the progress of model selection
-(which model is being fitted, which were fit successfully)}
+(which model is being fitted, which were fit successfully)
+
+  Version 1.5 saves many variables, and internal variables in the package environment:
+  FlexParamCurve:::FPCEnv. By default, the pn.options file is copied to the environment
+  specified by the functions (global environment by default). Model selection routines
+  also copy from FPCenv to the global environment all nlsList models fitted during 
+  model selection to provide backcompatibility with code for earlier versions. The user
+  can redirect the directory to copy to by altering the Envir argument when calling the 
+  function.
+ }
 
 
 \seealso{\code{\link{extraF}}
 \code{\link{SSposnegRichards}}
 \code{\link{nlsList}}}
 \examples{
+\donttest{
 #these examples will take a long while to run as they have to complete the 32 model comparison
 #run model selection for posneg.data object (only first 3 group levels for example's sake)
-\donttest{
-   data(posneg.data)
+   try(rm(myoptions),silent = TRUE)
    subdata <- subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
    modseltable <- pn.mod.compare(subdata$age, subdata$mass,
-      subdata$id, existing = FALSE, pn.options = "myoptions")}
-    
+      subdata$id, existing = FALSE, pn.options = "myoptions")
+   modseltable
+   
 #fit nlsList model initially and then run model selection
 #for posneg.data object when at least one model is already fit
-# note forcemod is set to 3 so that models 21-36 are evaluated
-\donttest{
+#(only first 3 group levels for example's sake)
     richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
-      Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri , modno = 22)
-                        ,data = posneg.data, pn.options = "myoptions")
+      Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri , modno = 22, pn.options = "myoptions")
+                        ,data = subdata)
    modseltable <- pn.mod.compare(subdata$age, subdata$mass,
-      subdata$id, forcemod = 3, existing = TRUE, pn.options = "myoptions")}
- 
-#run model selection ranked by residual standard error*sample size
-\donttest{
+      subdata$id, forcemod = 3, existing = TRUE, pn.options = "myoptions")
+   modseltable
+
+#run model selection ranked by residual standard error*(1/sample size)
     modseltable <- pn.mod.compare(subdata$age, subdata$mass,
-      subdata$id, penaliz='1*(n)', existing = TRUE, pn.options = "myoptions")}
+      subdata$id, penaliz='1*(1/n)', existing = TRUE, pn.options = "myoptions")
+    modseltable
+    }
 }

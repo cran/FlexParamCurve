@@ -7,7 +7,7 @@
   the simulated masses for whiskered tern chicks between 0 and 21 
   days of age.
 }
-\usage{data(logist.data)}
+\usage{logist.data}
 \format{
   This object of class \code{c("nfnGroupedData", "nfGroupedData",
     "groupedData", "data.frame")} containing the following columns:
@@ -47,9 +47,9 @@
 }
 \examples{
 require(stats); require(graphics)
-data(logist.data)
-\donttest{
-modpar(logist.data$age, logist.data$mass, force4par = TRUE, pn.options = "myoptions") #create list for fixed parameters
+logist.data
+#create list for fixed parameters
+modpar(logist.data$age, logist.data$mass, force4par = TRUE, pn.options = "myoptions")
 plot(mass ~ age, data = logist.data, subset = id == "0.002",
      xlab = "Chick age (day)", las = 1,
      ylab = "Chick mass (g)",
@@ -60,6 +60,5 @@ fm1 <- nls(mass ~ SSposnegRichards(age,Asym=Asym,K=K,Infl=Infl,
            data = logist.data, subset = id == "0.002")
 age <- seq(0, 166, length.out = 101)
 lines(age, predict(fm1, list(age = age)))
-}
 }
 \keyword{datasets}

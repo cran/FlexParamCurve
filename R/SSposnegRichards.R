@@ -1,6 +1,23 @@
 SSposnegRichards <- structure(function(x, Asym = NA, 
     K = NA, Infl = NA, M = NA, RAsym = NA, Rk = NA, Ri = NA, RM = NA, 
-    modno, pn.options) {
+    modno, pn.options, Envir = ".GlobalEnv") {
+    Envir1 <- try(FPCEnv$env,silent=T)
+    env1ck <- try(is.environment(FPCEnv$env),silent=T)
+    envck <- try(is.environment(Envir),silent=T)
+    env.ck<-2
+    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(env.ck == 2) {
+    modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
+   if(class(modselck)[1] != "try-error" & modselck == TRUE) {
+     if(identical(Envir, Envir1) == FALSE & 
+    	identical(Envir,.GlobalEnv) == TRUE){
+    	Envir <- Envir1
+    	}
+    	}
+    }
+    if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    FPCEnv$env <- Envir
     pcall <- as.list((sys.call()))
     pnoptname <- as.character( pcall[["pn.options"]])
     nmpnmodelparams <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
@@ -10,13 +27,16 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 	"Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
 	"Rimin", "Rimax", "RMmin", "RMmax") 
     try({
-    parload <- get(pnoptname, envir = globalenv())
+    parload <- try(get(pnoptname, envir = Envir), silent=T)
+    if(class(parload) == "try-error") 
+       stop("pn.options file not found in specified environment. Please check your call
+       and the last call (if any) to modpar() to ensure they match")
     }, silent = TRUE)
     try({pnmodelparamsbounds <- parload[ names(parload) %in% nmpnmodelparamsbounds]
          pnmodelparams <- parload[ names(parload) %in% nmpnmodelparams] },silent = TRUE)
     fractM <- M
     fractRM <- RM
-    if( !is.numeric(modno)) modno <- get(as.character(modno), envir = .GlobalEnv )
+    if( !is.numeric(modno)) modno <- get(as.character(modno), envir = Envir)
     if (modno > 19) {
         fractM <- 1/pnmodelparams$M
         M <- pnmodelparams$M
@@ -93,50 +113,42 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             }
         }
     }
-}, ex = function() {
-    require(graphics)
-    data(posneg.data)
-    modpar(posneg.data$age, posneg.data$mass)
-    getInitial(mass ~ SSposnegRichards(age, Asym, K, Infl, M, 
-        RAsym, Rk, Ri, RM, modno = 1), data = posneg.data)
-    pars <- as.numeric(getInitial(mass ~ SSposnegRichards(age, 
-        Asym, K, Infl, M, RAsym, Rk, Ri, RM, modno = 22), data = posneg.data))
-    plot(posneg.data$age, posneg.data$mass)
-    curve(posnegRichards.eqn(x, Asym = pars[1], K = pars[2], 
-        Infl = pars[3], M = 1, RAsym = pars[4], Rk = pars[5], 
-        Ri = pars[6], RM = 1, modno = 2), lty = 3, xlim = c(0, 
-        200), add = TRUE)
-    richardsR1.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, 
-        K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, 
-        RM = RM, modno = 1), data = posneg.data)
-    subdata <- subset(posneg.data, as.numeric(row.names(posneg.data)) < 
-        53)
-    richardsR1.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, 
-        K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, 
-        RM = RM, modno = 1), data = subdata)
-    richardsR2.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, 
-        K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, 
-        RM = 1, modno = 2), data = subdata)
-    richardsR21.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, 
-        K = K, Infl = Infl, M = 1, RAsym = RAsym, Rk = Rk, Ri = Ri, 
-        RM = RM, modno = 21), data = subdata)
-    richardsR21.nlme <- nlme(richardsR21.lis)
-    richards22.nlme <- nlme(mass ~ SSposnegRichards(age, Asym = Asym, 
-        K = K, Infl = Infl, M = 1, RAsym = RAsym, Rk = Rk, Ri = Ri, 
-        RM = 1, modno = 22), data = subdata, fixed = Asym ~ 1, 
-        random = Asym ~ 1)
-    data(logist.data)
-    richardsR20.lis <- nls(mass ~ SSposnegRichards(age, Asym = Asym, 
-        K = K, Infl = Infl, M = 1, RAsym = 1, Rk = 1, Ri = 1, 
-        RM = 1, modno = 20), data = logist.data)
-}, initial = function(mCall, LHS, data, modno, pn.options) {
+}, initial = function(mCall, LHS, data, ...) {
+    Envir1 <- try(FPCEnv$env,silent=T)
+    env1ck <- try(is.environment(FPCEnv$env),silent=T)
+    envck <- try(is.environment(Envir),silent=T)
+    env.ck<-2
+    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+     if(env.ck == 2) {
+        modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
+       if(class(modselck)[1] != "try-error" & modselck == TRUE) {
+         if(identical(Envir, Envir1) == FALSE & 
+        	identical(Envir,.GlobalEnv) == TRUE){
+        	Envir <- Envir1
+        	}
+        	}
+    }
+     if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    if(exists("Envir") == F) stop("Environment not previously specified - argument not
+    successfully transfered: \n run modpar or manually assign Envir value to FPCEnv$env
+    e.g. assign('env', FlexParamCurve:::FPCEnv, envir = FlexParamCurve:::FPCEnv")
+    FPCEnv$env <- Envir
     xy <- sortedXyData(mCall[["x"]], LHS, data)
     substparams<-NA
     counterR<-0
     optnm <- mCall[["pn.options"]]
     optvarnm <- as.character(optnm)
-    optvar<- get(optvarnm, .GlobalEnv)
-    if(length(optvar$taper.ends) == 1) taper.ends <- optvar$taper.ends
+    if(exists(optvarnm, envir = Envir) == FALSE) { 
+    optvar<- FPCEnv$pnoptnm
+     } else {
+     optvar<- get(optvarnm, envir = Envir)
+     }
+     if(length(optvar$taper.ends) == 1){
+    	taper.ends <- optvar$taper.ends
+    	} else {
+    	taper.ends <- 0.45
+    					}
      if(length(optvar$modpar) == 1) {
      frommodpar <- TRUE
      				} else {
@@ -189,7 +201,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 	    if(modno == 12 | modno == 32 | optvar$force4par == TRUE) unmatchbounds <- (names(boundsprovided) %w/o% 
 	    	 matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
 		"twocomponent.x","verbose","force4par", "RAmin","RAmax","Rkmin","Rkmax","Rimin","Rimax","RMmin","RMmax")
-	    .paramsestimated <- try( get(".paramsestimated",.GlobalEnv) ,silent = TRUE)
+	    .paramsestimated <- try( FPCEnv$.paramsestimated ,silent = TRUE)
 	    if( class(.paramsestimated) == "try-error" ) .paramsestimated <- TRUE
 	    if(modno != 18 & modno != 19 ){
 	    if(length(unmatchbounds) > 0 & .paramsestimated == TRUE ) {
@@ -198,7 +210,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
        	    parseval("substparams <- modpar(xy$x, xy$y, first.y = pnmodelparams$first.y, x.at.first.y = pnmodelparams$x.at.first.y,
     		last.y = pnmodelparams$last.y,
     		x.at.last.y = pnmodelparams$x.at.last.y, twocomponent.x = pnmodelparams$twocomponent.x, verbose = pnmodelparams$verbose,
-    		force4par = pnmodelparams$force4par, pn.options =\"", as.character(optvarnm),"\")")
+    		force4par = pnmodelparams$force4par, Envir = Envir, pn.options =\"", as.character(optvarnm),"\")")
     	options(warn=-1)
     	pnmodelparams[which(names(pnmodelparams) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparams))]
     	pnmodelparamsbounds[which(names(pnmodelparamsbounds) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparamsbounds))]
@@ -216,14 +228,14 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     } else {
   	valexp[13] <- as.logical( valexp[13] )     	
     }
-    assign(optvarnm, valexp, .GlobalEnv) 
+    assign(optvarnm, valexp, envir = Envir) 
     modno <- mCall[["modno"]]
-    if( !is.numeric(modno)) modno <- get(as.character(modno), envir = .GlobalEnv )
+    if( !is.numeric(modno)) modno <- get(as.character(modno), envir = Envir)
     invars <- mCall
     modelparams <- valexp[1:15]
     if (is.na(modelparams[1]) == TRUE) {
         if (modno != 18 & modno != 19) {
-            stop("ERROR: global parameters empty or Asym missing: run function modpar before using selfStart functions: see ?modpar")
+            stop("ERROR: saved parameters empty or Asym missing: run function modpar before using selfStart functions: see ?modpar")
         }
     }
     if(!is.na(modelparams$twocomponent.x) & modelparams$force4par == TRUE) 
@@ -628,7 +640,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     		valexp[1:31] <- as.numeric( valexp[1:31] )
     		valexp[14:15] <- as.logical( valexp[14:15] )
     		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
-    		assign(optvarnm, valexp, .GlobalEnv)    		    
+    		assign(optvarnm, valexp, envir = Envir )    		    
             }
         }
     } else {
@@ -1214,7 +1226,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             }
             if (modno == 18 | modno == 19) {
             	Risav <- NA
-                testpar <- get(optvarnm, envir = globalenv())
+                testpar <- get(optvarnm, envir = Envir )
                 testpar <- testpar[ names(testpar) %in% names(pnmodelparamsbounds)]
                 if (is.na(testpar[1])) {
                   Amax = Asym + (abs(Asym) * largemult)
@@ -1372,7 +1384,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
   		valexp[13] <- as.logical( valexp[13] )     	
         	}
   		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
- 		assign(optvarnm, valexp, .GlobalEnv)
+ 		assign(optvarnm, valexp, envir = Envir )
  		pnmodelparams<-valexp[1:15]
  	      }
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
@@ -1781,11 +1793,11 @@ SSposnegRichards <- structure(function(x, Asym = NA,
   		valexp[13] <- as.logical( valexp[13] )     	
         	}
       		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
-    		assign(optvarnm, valexp, .GlobalEnv)
+    		assign(optvarnm, valexp, envir = Envir )
     		pnmodelparams<-valexp[1:15]
 		modelparams <- exportparams
                 modelparamsbounds <- exportparamsbounds
-                assign(".tmpposnegfile", 0, envir = .GlobalEnv)
+                FPCEnv$.tmpposnegfile <- 0
             }
             if (modno == 1 | modno == 21 | modno == 18) {
                 inputval <- c(RAsym, Rk, Ri, RM)
@@ -1897,8 +1909,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 print("error in model 20 code - please report")
             }
             func2 <- function(val1) {
-                tmpposnegfile <- get(".tmpposnegfile", envir = .GlobalEnv)
-   		parload <- get(optvarnm, envir = globalenv())
+                tmpposnegfile <- FPCEnv$.tmpposnegfile
+   		parload <- get(optvarnm, envir = Envir )
                 pnmodelparams <- parload[ names(parload) %in% names(pnmodelparams)]
                 value1 <- data.frame(RAsym = pnmodelparams$RAsym, 
                   Rk = pnmodelparams$Rk, Ri = pnmodelparams$Ri, 
@@ -2094,7 +2106,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 		                  val1 <- data.frame(t(val1))
                   names(val1) <- val1nms
             }
-		parload <- get(optvarnm, envir = globalenv())
+		parload <- get(optvarnm, envir = Envir )
                 pnmodelparamsbounds <- parload[ names(parload) %in% names(pnmodelparamsbounds)]
         }
         if (modno == 12 | modno == 20 | modno == 32 | modno == 
@@ -2860,14 +2872,14 @@ SSposnegRichards <- structure(function(x, Asym = NA,
   		valexp[13] <- as.logical( valexp[13] )     	
         	}
       	try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
-    	assign(optvarnm, valexp, .GlobalEnv) 
+    	assign(optvarnm, valexp, envir = Envir) 
     }
     if (modelparams$verbose == TRUE) {
         print("Values from SSposnegRichards:")
         prnval <- unlist(value)
         names(prnval) <- names(value)
         print(prnval)
-    }                 
+    } 
      value
 }, pnames = c("Asym", "K", "Infl", "M", "RAsym", "Rk", "Ri", 
     "RM"), class = "selfStart") 

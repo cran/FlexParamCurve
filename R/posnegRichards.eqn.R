@@ -1,7 +1,19 @@
 posnegRichards.eqn <-
 structure(function(x, Asym = NA,
     K = NA, Infl = NA, M = NA, RAsym = NA, Rk = NA, Ri = NA, RM = NA,
-    modno, pn.options) {
+    modno, pn.options, Envir = .GlobalEnv) {
+    Envir1 <- try(FPCEnv$env,silent=T)
+    env1ck <- try(is.environment(FPCEnv$env),silent=T)
+    envck <- try(is.environment(Envir),silent=T)
+    env.ck<-2
+    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(env.ck == 2) {
+    if(identical(Envir, Envir1) == FALSE & 
+    	identical(Envir,.GlobalEnv) == TRUE) Envir <- Envir1
+    }
+    if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    FPCEnv$env <- Envir
     params<-list(Asym = Asym, K = K, Infl = Infl, M = M, RAsym = RAsym,
         Rk = Rk, Ri = Ri, RM = RM, first.y = NA, x.at.first.y = NA, 
         last.y = NA, x.at.last.y = NA, twocomponent.x = NA, 
@@ -10,7 +22,7 @@ structure(function(x, Asym = NA,
     pnmodelparams[14]<-FALSE
     pnmodelparams[15]<-FALSE
     names(pnmodelparams)<-names(params)
-    pnopt<- get(as.character( pn.options[1] ), .GlobalEnv)
+    pnopt<- get(as.character( pn.options[1] ), envir = Envir)
     pnmodelparams[ names(pnmodelparams) %in% names(pnopt) ] <- pnopt[ names(pnopt) %in% names(pnmodelparams) ]
     pnmodelparams[ names(pnmodelparams) %in% names(params[!is.na(params)]) ] <- params[  names(pnmodelparams) %in% names(params[!is.na(params)])  ]   
     if(is.na(pnmodelparams[14])) pnmodelparams[14] <- FALSE
@@ -167,7 +179,6 @@ structure(function(x, Asym = NA,
     }
 }, ex = function(){
     require(graphics)
-    data(posneg.data)
     modpar(posneg.data$age, posneg.data$mass)
     y <- posnegRichards.eqn(10, 1000, 0.5, 25, 1, 100, 0.5, 125, 1, modno = 1)
 

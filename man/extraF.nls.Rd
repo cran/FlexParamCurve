@@ -39,7 +39,7 @@ demonimator degrees of freedom, P value and the residual sum of squares for both
 and reduced models}
 \references{Ritz, C. and Streibigg, J. C. (2008) \eqn{Nonlinear regression with R.}
 Springer-Verlag, New York.}
-\author{Stephen Oswald <ozsao23@hotmail.com>}
+\author{Stephen Oswald <steve.oswald@psu.edu>}
 
 
 
@@ -49,14 +49,13 @@ Springer-Verlag, New York.}
 \code{\link{pn.mod.compare}}}
 \examples{
 #fit and compare two nested nls models (7 vs 8 parameter models)
-\donttest{   
-   data(posneg.data)
-   modpar(posneg.data$age, posneg.data$mass, pn.options.name = "myoptions") #create list for fixed parameters
+   #create list for fixed parameters
+   modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions") 
    richardsR1.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
    Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, RM = RM, modno = 1, pn.options = myoptions)
                         , data = posneg.data)
    richardsR2.nls <- nls(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
    Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri, modno = 2, pn.options = myoptions)
                         , data = posneg.data)
-   extraF.nls(richardsR2.nls, richardsR1.nls)}
+   extraF.nls(richardsR2.nls, richardsR1.nls)
 }

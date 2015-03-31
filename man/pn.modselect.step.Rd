@@ -11,6 +11,7 @@ forcemod = 0,
 existing = FALSE,
 penaliz = "1/sqrt(n)",
 taper.ends = 0.45,
+Envir = .GlobalEnv,
 ...)
 }
 \arguments{
@@ -28,6 +29,8 @@ have already been fitted}
   \item{taper.ends}{numeric representing the proportion of the range of the x variable for which data are extended at 
 the two ends of the data set. This is used in initial estimation (prior to optim and nls optimizations) and can 
 speed up subsequent optimizations by imposing a more pronounced S-shape to both first and second curves. Defaults to 0.45.}
+  \item{Envir}{a valid R environment to find pn.options in and export any output to, by default this is the global
+  environment} 
   \item{...}{additional optional arguments to be passed to nlsList}
 }
 \description{This function performs backawards stepwise model selection for \code{\link{nlsList}}
@@ -86,11 +89,20 @@ step. The overall best model evaluated by the end of the function is saved globa
 The naming convention for models is a concatenation of 'richardsR', the modno and '.lis'
 (see \code{\link{SSposnegRichards}}).}
 
-\author{Stephen Oswald <ozsao23@hotmail.com>}
+\author{Stephen Oswald <steve.oswald@psu.edu>}
 \note{If appropriate bounds (or starting parameters) are not available in the list specified by the variable supplied 
 to \code{pn.options}, \code{\link{modpar}} will be called automatically prior to model selection. 
 During selection, text is output to the screen to inform the user of the progress of model selection
-(which model is being fitted)}
+(which model is being fitted)
+
+  Version 1.5 saves many variables, and internal variables in the package environment:
+  FlexParamCurve:::FPCEnv. By default, the pn.options file is copied to the environment
+  specified by the functions (global environment by default). Model selection routines
+  also copy from FPCenv to the global environment all nlsList models fitted during 
+  model selection to provide backcompatibility with code for earlier versions. The user
+  can redirect the directory to copy to by altering the Envir argument when calling the 
+  function.
+ }
 
 
 \seealso{\code{\link{pn.mod.compare}}
@@ -98,29 +110,29 @@ During selection, text is output to the screen to inform the user of the progres
 \code{\link{SSposnegRichards}}
 \code{\link{nlsList}}}
 \examples{
+\donttest{
 #these examples will take a long while to run as they have to complete the 32 model comparison
 #run model selection for posneg.data object (only first 3 group levels for example's sake)
-\donttest{
-data(posneg.data)
-   subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
+   try( rm(myoptions), silent = TRUE)
+   subdata <- subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
    modseltable <- pn.modselect.step(subdata$age, subdata$mass,
-      subdata$id, existing = FALSE, pn.options = "myoptions")}
+      subdata$id, existing = FALSE, pn.options = "myoptions")
+   modseltable
 
 #fit nlsList model initially and then run model selection
 #for posneg.data object when at least one model is already fit
-#note forcemod is set to 3 so that models 21-36 are evaluated
-#(only first 4 group levels for example's sake)
-\donttest{
-subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
-   richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
+#(only first 3 group levels for example's sake)
+    richardsR22.lis <- nlsList(mass ~ SSposnegRichards(age, Asym = Asym, K = K,
       Infl = Infl, RAsym = RAsym, Rk = Rk, Ri = Ri , modno = 22, pn.options = "myoptions")
                         ,data = subdata)
    modseltable <- pn.modselect.step(subdata$age, subdata$mass,
-      subdata$id, forcemod = 3, existing = TRUE, pn.options = "myoptions")}
+      subdata$id, forcemod = 3, existing = TRUE, pn.options = "myoptions")
+   modseltable
 
 #run model selection ranked by residual standard error*sample size
-#(only first 4 group levels for example's sake)
-\donttest{
-modseltable <- pn.modselect.step(subdata$age, subdata$mass,
-      subdata$id, penaliz='1*(n)', existing = TRUE, pn.options = "myoptions")}
+#(only first 3 group levels for example's sake)
+    modseltable <- pn.modselect.step(subdata$age, subdata$mass,
+      subdata$id, penaliz='1*(n)', existing = TRUE, pn.options = "myoptions")
+    modseltable
+    }
 }

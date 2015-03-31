@@ -7,7 +7,7 @@
   the simulated masses for black-browed albatross chicks between 0 and 166 
   days of age.
 }
-\usage{data(posneg.data)}
+\usage{posneg.data}
 \format{
   This object of class \code{c("nfnGroupedData", "nfGroupedData",
     "groupedData", "data.frame")} containing the following columns:
@@ -53,9 +53,9 @@
 }
 \examples{
 require(stats); require(graphics)
-data(posneg.data)
-\donttest{
-modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions") #create list for fixed parameters
+posneg.data
+#create list for fixed parameters
+modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions")
 plot(mass ~ age, data = posneg.data, subset = id == "1",
      xlab = "Chick age (day)", las = 1,
      ylab = "Chick mass (g)",
@@ -65,6 +65,5 @@ fm1 <- nls(mass ~ SSposnegRichards(age,Asym=Asym,K=K,Infl=Infl, RAsym=RAsym,
            data = posneg.data, subset = id == "1")
 age <- seq(0, 166, length.out = 101)
 lines(age, predict(fm1, list(age = age)))
-}
 }
 \keyword{datasets}

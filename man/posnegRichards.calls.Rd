@@ -11,7 +11,7 @@
   number and then the model number - see examples below.
   Note that model 17 is formulated differently (see \code{\link{SSposnegRichards}})
 }
-\usage{data(posnegRichards.calls)}
+\usage{posnegRichards.calls}
 \format{
   This object of class \code{\link{list}} containing the components:
   \describe{
@@ -32,20 +32,20 @@
 }
 \examples{
 # extract the call for fitting a nls model with 8-parameter double-Richards curve (model 1)
-data(posnegRichards.calls)
-data(posneg.data)
+posnegRichards.calls
+posneg.data
 #for an example just fit a subset of the data, 3 group levels (individuals)
    data <- subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
  
-modtofit <- as.character( posnegRichards.calls [[2]] [row.names(posnegRichards.calls [[2]]) == "22",] )
+modtofit <- as.character( 
+               posnegRichards.calls [[2]] [row.names(posnegRichards.calls [[2]]) == "22",] )
 #change the data source
 modtofit <- sub("posneg.data","data",modtofit)
 modtofit <- parse(text = modtofit)
-\donttest{
-modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions") #create list for fixed parameters
+#create list for fixed parameters
+modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions")
 eval(modtofit)
 richardsR22.lis
-}
 
 # view call for model 1
 posnegRichards.calls [[1]] [row.names(posnegRichards.calls [[1]]) == "1",]

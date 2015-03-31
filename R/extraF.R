@@ -2,8 +2,9 @@ extraF <-
 structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares F-Tests
                    (submodel = 1,
                     ### \eqn{nlsList} model with fewer curve parameters (reduced model)
-                    genmodel = 1
+                    genmodel = 1,
                     ### \eqn{nlsList} model with more curve parameters (general model)
+                    warn = TRUE
                     ) {
     ##description<< Function to compare two nested models using extra sum-of-squares F-Tests.                
     ##details<< Models must be entered in the correct order with the reduced model appearing
@@ -23,7 +24,17 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
     ## If the F value is significant then the more general model provides a significant improvement
     ## over the reduced model, but if the models are not significantly different then the reduced
     ## parameter model is to be preferred.
-    assign("legitmodel", "legitmodelreset", envir = .GlobalEnv)
+    Envir1 <- try(FPCEnv$env,silent=T)
+    env1ck <- try(is.environment(FPCEnv$env),silent=T)
+    envck <- try(is.environment(Envir),silent=T)
+    env.ck<-2
+    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(env.ck == 2){
+    	if(identical(Envir,Envir1) == F) Envir <- Envir1}
+    if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    FPCEnv$env <- Envir
+    FPCEnv$legitmodel <- "legitmodelreset"
     chk <- try(unlist(summary(submodel))["RSE"], silent = TRUE)
     if (class(chk)[1] == "try-error" | class(submodel)[1] != "nlsList" )
         submodel <- 1
@@ -34,12 +45,12 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
         "numeric") {
         if (class(submodel)[1] == "numeric" & class(genmodel)[1] ==
             "numeric") {
-            assign("legitmodel", 1, envir = .GlobalEnv)
+            FPCEnv$legitmodel <- 1
         output <- data.frame(NA, NA, NA, NA, NA, NA)
         } else {        
          if (class(submodel)[1] == "numeric") {
             is.na(submodel) <- TRUE
-            assign("legitmodel", genmodel, envir = .GlobalEnv)
+            FPCEnv$legitmodel <- genmodel
 	 residu <-resid(genmodel)
          origRSE <- as.numeric(unlist(summary(genmodel))["RSE"]) 
 	 newRSE <- origRSE  * sqrt( length(residu))/ sqrt(length(residu[!is.na(residu)]))
@@ -52,7 +63,7 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
          }
          if (class(genmodel)[1] == "numeric") {
             is.na(genmodel) <- TRUE
-            assign("legitmodel", submodel, envir = .GlobalEnv)
+            FPCEnv$legitmodel <-  submodel
 	 residu <-resid(submodel)
          origRSE <- as.numeric(unlist(summary(submodel))["RSE"]) 
 	 newRSE <- origRSE  * sqrt( length(residu))/ sqrt(length(residu[!is.na(residu)]))
@@ -104,7 +115,6 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
 }
 , ex = function(){
    #compare two nested nlsList models (4 vs 8 parameter models)
-   data(posneg.data)
    modpar(posneg.data$age, posneg.data$mass) #create pnmodelparams for fixed parameters
    # (only first 4 group levels in data used for example's sake)
    subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 53)

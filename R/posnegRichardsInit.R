@@ -1,10 +1,35 @@
 posnegRichardsInit <-
-function(mCall, LHS, data, modno, pn.options) {
+function(mCall, LHS, data, ...) {
+    Envir1 <- try(FPCEnv$env,silent=T)
+    env1ck <- try(is.environment(FPCEnv$env),silent=T)
+    envck <- try(is.environment(Envir),silent=T)
+    env.ck<-2
+    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(env.ck == 2) {
+    modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
+     if(class(modselck)[1] != "try-error" & modselck == TRUE) {
+    if(identical(Envir, Envir1) == FALSE & 
+    	identical(Envir,.GlobalEnv) == TRUE){
+    	Envir <- Envir1
+    	}
+    	}
+    }
+    if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    if(exists("Envir") == F) stop("Environment not previously specified - argument not
+    successfully transfered: run modpar or manually assign Envir value to FPCEnv$env \n
+    e.g. assign('env', FlexParamCurve:::FPCEnv, envir = FlexParamCurve:::FPCEnv")  
+    FPCEnv$env <- Envir
     xy <- sortedXyData(mCall[["x"]], LHS, data)
     substparams<-NA
     optnm <- mCall[["pn.options"]]
     optvarnm <- as.character(optnm)
-    optvar<- get(optvarnm, .GlobalEnv) 
+       if(exists(optvarnm, envir = Envir) == FALSE) { 
+        optvar<- FPCEnv$pnoptnm
+         } else {
+         optvar<- get(optvarnm, envir = Envir)
+         }
+ 
 	    skel <- rep(list(1), 15)
 	    pnmodelparams <- c(rep(NA, 12),rep(FALSE,3))
 	    pnmodelparams <- relist(pnmodelparams, skel)	    
@@ -37,7 +62,7 @@ function(mCall, LHS, data, modno, pn.options) {
 	    "%w/o%" <- function(x, y) x[!x %in% y] #--  x without y
 	    unmatchbounds <- (names(boundsprovided) %w/o% matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
 		"twocomponent.x","verbose","force4par")
-	    .paramsestimated <- try( get(".paramsestimated",.GlobalEnv) ,silent = TRUE)
+	    .paramsestimated <- try( FPCEnv$.paramsestimated ,silent = TRUE)
 	    if( class(.paramsestimated) == "try-error" ) .paramsestimated <- TRUE
 	    if(length(unmatchbounds) > 0 & .paramsestimated == TRUE ) {
 	    print("WARNING: In pn.options:  Some parameters specified are missing min/max bounds. Running modpar to populate these bounds.")
@@ -45,7 +70,7 @@ function(mCall, LHS, data, modno, pn.options) {
        	    parseval("substparams <- modpar(xy$x, xy$y, first.y = pnmodelparams$first.y, x.at.first.y = pnmodelparams$x.at.first.y,
     		last.y = pnmodelparams$last.y,
     		x.at.last.y = pnmodelparams$x.at.last.y, twocomponent.x = pnmodelparams$twocomponent.x, verbose = pnmodelparams$verbose,
-    		force4par = pnmodelparams$force4par, pn.options =\"", as.character(optvarnm),"\")")
+    		force4par = pnmodelparams$force4par, Envir = Envir), pn.options =\"", as.character(optvarnm),"\")")
     	options(warn=-1)
     	pnmodelparams[which(names(pnmodelparams) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparams))]
     	pnmodelparamsbounds[which(names(pnmodelparamsbounds) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparamsbounds))]
@@ -56,14 +81,14 @@ function(mCall, LHS, data, modno, pn.options) {
     names( valexp[1:31] ) <- names( c(pnmodelparams,pnmodelparamsbounds) )
     valexp[1:31] <- as.numeric( valexp[1:31] )
     valexp[13:15] <- as.logical( valexp[13:15] )
-    assign(optvarnm, valexp, .GlobalEnv) 
+    assign(optvarnm, valexp, envir = Envir) 
     modno <- mCall[["modno"]]
-    if( !is.numeric(modno)) modno <- get(as.character(modno), envir = .GlobalEnv )
+    if( !is.numeric(modno)) modno <- get(as.character(modno), envir = Envir)
     invars <- mCall
     modelparams <- valexp[1:15]
     if (is.na(modelparams[1]) == TRUE) {
         if (modno != 18 & modno != 19) {
-            stop("ERROR: global parameters empty or Asym missing: run function modpar before using selfStart functions: see ?modpar")
+            stop("ERROR: saved parameters empty or Asym missing: run function modpar before using selfStart functions: see ?modpar")
         }
     }
     if(!is.na(modelparams$twocomponent.x) & modelparams$force4par == TRUE) 
@@ -422,7 +447,7 @@ function(mCall, LHS, data, modno, pn.options) {
    		names( valexp[1:31] ) <- names( c(pnmodelparams,pnmodelparamsbounds) )
     		valexp[1:31] <- as.numeric( valexp[1:31] )
     		valexp[13:15] <- as.logical( valexp[13:15] )
-    		assign(optvarnm, valexp, .GlobalEnv)    		    
+    		assign(optvarnm, valexp, envir = Envir)    		    
             }
         }
     } else {
@@ -820,7 +845,7 @@ function(mCall, LHS, data, modno, pn.options) {
                 return(repl)
             }
             if (modno == 18 | modno == 19) {
-                testpar <- get(optvarnm, envir = globalenv())
+                testpar <- get(optvarnm, envir = Envir)
                 testpar <- testpar[ names(testpar) %in% names(pnmodelparamsbounds)]
                 if (is.na(testpar[1])) {
                   Amax = Asym + (abs(Asym) * 2.5)
@@ -930,7 +955,7 @@ function(mCall, LHS, data, modno, pn.options) {
        		names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
         	valexp[1:31] <- as.numeric( valexp[1:31] )
         	valexp[13:15] <- as.logical( valexp[13:15] )
-    		assign(optvarnm, valexp, .GlobalEnv) 
+    		assign(optvarnm, valexp, envir = Envir) 
  	      }
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05 & Kmin > -1e-05) 
@@ -1269,12 +1294,12 @@ function(mCall, LHS, data, modno, pn.options) {
         		names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
          	valexp[1:31] <- as.numeric( valexp[1:31] )
          	valexp[13:15] <- as.logical( valexp[13:15] )
-    		assign(optvarnm, valexp, .GlobalEnv) 
+    		assign(optvarnm, valexp, envir = Envir) 
 		modelparams <- exportparams
                 modelparamsbounds <- exportparamsbounds
-                assign(".tmpposnegfile", 0, envir = .GlobalEnv)
+                FPCEnv$.tmpposnegfile <- 0
             }
-            if (modno == 1 | modno == 21 | modno == 18) {
+            if (-modno == 1 | modno == 21 | modno == 18) {
                 inputval <- c(RAsym, Rk, Ri, RM)
                 inputmin <- c(RAmin, Rkmin, Rimin, RMmin)
                 inputmax <- c(RAmax, Rkmax, Rimax, RMmax)
@@ -1384,8 +1409,8 @@ function(mCall, LHS, data, modno, pn.options) {
                 print("error in model 20 code - please report")
             }
             func2 <- function(val1) {
-                tmpposnegfile <- get(".tmpposnegfile", envir = .GlobalEnv)
-   		parload <- get(optvarnm, envir = globalenv())
+                tmpposnegfile <- FPCEnv$.tmpposnegfile
+   		parload <- get(optvarnm, envir = Envir)
                 pnmodelparams <- parload[ names(parload) %in% names(pnmodelparams)]
                 value1 <- data.frame(RAsym = pnmodelparams$RAsym, 
                   Rk = pnmodelparams$Rk, Ri = pnmodelparams$Ri, 
@@ -1544,7 +1569,7 @@ function(mCall, LHS, data, modno, pn.options) {
                 val1 <- val1[!is.na(val1)]
                 val1 <- data.frame(t(val1))
             }
-		parload <- get(optvarnm, envir = globalenv())
+		parload <- get(optvarnm, envir = Envir)
                 pnmodelparamsbounds <- parload[ names(parload) %in% names(pnmodelparamsbounds)]
         }
         if (modno == 12 | modno == 20 | modno == 32 | modno == 
@@ -2176,7 +2201,7 @@ function(mCall, LHS, data, modno, pn.options) {
         	names( valexp[1:31] ) <- names( c(exportparams,exportparamsbounds) )
         valexp[1:31] <- as.numeric( valexp[1:31] )
         valexp[13:15] <- as.logical( valexp[13:15] )
-    	assign(optvarnm, valexp, .GlobalEnv) 
+    	assign(optvarnm, valexp, envir = Envir) 
     }
     if (modelparams$verbose == TRUE) {
         print("Values from SSposnegRichards:")

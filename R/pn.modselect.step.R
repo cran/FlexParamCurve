@@ -19,6 +19,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
                                 penaliz = "1/sqrt(n)",
                                 ### optional character value to determine how models are ranked (see Details)
                                 taper.ends = 0.45,
+                                Envir = .GlobalEnv,
                                 ...
                                 ) {
 ##decription<< This function performs backawards stepwise model selection for \code{\link{nlsList}}
@@ -48,7 +49,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	## Fitting these \code{\link{nlsList}} models can be time-consuming (2-4 hours using the dataset
 	## \code{\link{posneg.data}} that encompasses 100 individuals) and if several of the relevant
 	## models are already fitted the option existing=TRUE can be used to avoid refitting models that
-	## already exist globally (note that a model object in which no grouping levels were successfully
+	## already exist (note that a model object in which no grouping levels were successfully
 	## parameterized will be refitted, as will objects that are not of class nlsList).
 	##
 	## Specifying forcemod=3 will force model selection to only consider fixed M models and setting
@@ -65,7 +66,8 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	## standard error is multiplied by). This argument must be a character value
 	## that contains the character n (sample size) and must be a valid right hand side (RHS) of a formula:
 	## e.g. 1*(n), (n)^2. It cannot contain more than one n but could be a custom function, e.g. FUN(n).
-	    library(nlme)
+	    pcklib<- FPCEnv
+	    options( warn = -1)
 	    pnoptm=NULL
 	    pnoptnm <- as.character(pn.options)
 	    checkpen <- try(unlist(strsplit(penaliz, "(n)")), silent = TRUE)
@@ -79,50 +81,54 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    }
 	    datamerg <- data.frame(x, y, grp)
 	    userdata <- groupedData(y ~ x | grp, outer = ~grp, data = datamerg)
+	    assign("userdata", userdata, envir = Envir)
+	    if(as.character(list(Envir)) != "<environment>") stop ("No such environment")
+            if(exists("Envir", mode = "environment") == FALSE) stop ("No such environment")
+   	    FPCEnv$env <- Envir
 	    testbounds <- 1
 	    testpar <- 1
 	    is.na(testbounds) <- TRUE
 	    is.na(testpar) <- TRUE
-	    testbounds <- try(get(pnoptnm, envir = .GlobalEnv)[16:32],
-		silent = F)
-	    testpar <- try(get(pnoptnm, envir = .GlobalEnv)[1:15],
-		silent = F)
+	    testbounds <- try(get(pnoptnm, envir = Envir)[16:32],
+		silent = T)
+	    testpar <- try(get(pnoptnm, envir = Envir)[1:15],
+		silent = T)
 	    if (class(testbounds)[1] == "try-error" | class(testpar)[1] ==
 		"try-error" | is.na(testbounds[1]) == TRUE | is.na(testpar[1]) ==
 		TRUE)
        	    try({
+       	        FPCEnv$mod.sel <- TRUE
          	modpar(datamerg[,1], datamerg[,2], pn.options = pnoptnm, taper.ends = taper.ends,
-        	verbose=FALSE, ...)
-        	}, silent = FALSE)    	
-	    extraF <- try(get("extraF", envir = .GlobalEnv), silent = TRUE)
+        	verbose=FALSE, Envir = Envir, ...)
+        	options(warn=-1)
+        	try(rm("mod.sel", envir = FPCEnv), silent =T)
+        	options(warn=0)
+        	}, silent = FALSE)    
+	    extraF <- try(get("extraF", pos = 1), silent = TRUE)
 	    if (class(extraF)[1] == "try-error") {
 		stop("cannot find function: extraF - please reload FlexParamCurve")
 	    }
-	    assign(".modstptemp",get(pnoptnm, envir = .GlobalEnv), .GlobalEnv)
-	    .modstptemp<-".modstptemp"
 	    mostreducedmod<-1
 	    print("checking fit of positive section of the curve for variable M*************************************")
-	    richardsR12.lis <- try(get("richardsR12.lis", envir = .GlobalEnv),
+	    richardsR12.lis <- try(FPCEnv$richardsR12.lis,
 		silent = TRUE)
 	    if (class(richardsR12.lis)[1] == "try-error" | existing ==
 		FALSE)
-		richardsR12.lis <- try(nlsList(y ~ SSposnegRichards(x,
-		    Asym = Asym, K = K, Infl = Infl, M = M, RAsym = 1,
-		    Rk = 1, Ri = 1, RM = 1, modno = 12, pn.options = .modstptemp), data = userdata, ...),
-		    silent = FALSE)
+		richardsR12.lis <- eval(parse(text=sprintf("%s",paste("try(nlsList(y ~ SSposnegRichards(x,
+		            Asym = Asym, K = K, Infl = Infl, M = M, modno = 12, pn.options = ",pnoptnm, "), data = userdata),
+            silent = TRUE)",sep=""))))
 	    print("checking fit of positive section of the curve for fixed M*************************************")
-	    pnmodelparams <- get(pnoptnm, envir = .GlobalEnv)[1:15]
-	    change.pnparameters <- try(get("change.pnparameters", envir = .GlobalEnv),
+	    pnmodelparams <- get(pnoptnm, envir = Envir)[1:15]
+	    change.pnparameters <- try(get("change.pnparameters", pos = 1),
 		silent = TRUE)
    	    chk <- try(unlist(summary(richardsR12.lis))["RSE"], silent = TRUE)
-	    richardsR20.lis <- try(get("richardsR20.lis", envir = .GlobalEnv),
+	    richardsR20.lis <- try(FPCEnv$richardsR20.lis,
 		silent = TRUE)
 	    if (class(richardsR20.lis)[1] == "try-error" | existing ==
 		FALSE)
-		richardsR20.lis <- try(nlsList(y ~ SSposnegRichards(x,
-		    Asym = Asym, K = K, Infl = Infl, M = 1, RAsym = 1,
-		    Rk = 1, Ri = 1, RM = 1, modno = 20, pn.options = .modstptemp), data = userdata, ...),
-		    silent = FALSE)
+		richardsR20.lis <- eval(parse(text=sprintf("%s",paste("try(nlsList(y ~ SSposnegRichards(x,
+		            Asym = Asym, K = K, Infl = Infl, modno = 20, pn.options = ",pnoptnm,"), data = userdata),
+            silent = TRUE)",sep=""))))
 	    chk1 <- try(unlist(summary(richardsR20.lis))["RSE"], silent = TRUE)     
 	    if ((class(richardsR20.lis)[1]) == "try-error" | class(richardsR20.lis)[[1]] != "nlsList" 
 	    	| class(chk1)[1] == "try-error") {
@@ -130,7 +136,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		forcemod = 4
 		richardsR20.lis <- 1
 		} else {
-		assign("richardsR20.lis", richardsR20.lis, .GlobalEnv)
+		FPCEnv$richardsR20.lis <- richardsR20.lis
 	    					}
 	    if ((class(richardsR12.lis)[1]) == "try-error" | class(richardsR12.lis)[[1]] != "nlsList" 
 	    	| class(chk)[1] == "try-error")
@@ -139,11 +145,11 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    forcemod = 3
 		    richardsR12.lis <- 1
 		} else {
-		assign("richardsR12.lis", richardsR12.lis, .GlobalEnv)
+		FPCEnv$richardsR12.lis <- richardsR12.lis
 					}
 	    currentmodel <- 1
 	    if (forcemod == 0) {
-		testmod <- try(extraF(richardsR20.lis, richardsR12.lis))
+		testmod <- try(extraF(richardsR20.lis, richardsR12.lis, warn = F))
 		if (class(testmod) == "try-error") {
 		    modelsig = 0.1
 		} else {
@@ -173,6 +179,8 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    } else {
 		print("Fixed M models most appropriate*************************************")
 	    }
+	    options(warn = 0)
+	    options(warn = -1)
 	    rankmod <- function(model1 = 1, model2 = 1, model3 = 1, model4 = 1) {
 		nm <- rep(0, 4)
 		nm[1] <- (as.character(substitute(model1)))
@@ -211,37 +219,36 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		usefun <- unlist(strsplit(penaliz, "(n)"))
 		if (class(model1)[[1]] == "nlsList" & class(model1)[1] !=
 		    "try-error") {
-		    evfun <- parse(text = sprintf("%s", paste("summary(model1)[['",
-			RSEstr, "']]*(", usefun[1], "1+sum( summary(model1)[['",
-			dfstr, "']],na.rm=TRUE))", usefun[2], sep = "")))
+        		evfun <- parse(text = sprintf("%s", paste("summary(model1)[['",
+           		 RSEstr, "']]*(", usefun[1], "(1+sum( summary(model1)[['",
+           		 dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
 		    modrank[1, 2] <- eval(evfun)
 		} else {
 		    nomods = nomods - 1
 		}
 		if (class(model2)[[1]] == "nlsList" & class(model2)[1] !=
 		    "try-error") {
-		    evfun <- parse(text = sprintf("%s", paste("summary(model2)[['",
-			RSEstr, "']]*(", usefun[1], "1+sum( summary(model2)[['",
-			dfstr, "']],na.rm=TRUE))", usefun[2], sep = "")))
+      			  evfun <- parse(text = sprintf("%s", paste("summary(model2)[['",
+         			RSEstr, "']]*(", usefun[1], "(1+sum( summary(model2)[['",
+          		 	 dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
 		    modrank[2, 2] <- eval(evfun)
 		} else {
 		    nomods = nomods - 1
 		}
 		if (class(model3)[[1]] == "nlsList" & class(model3)[1] !=
 		    "try-error") {
-		    evfun <- parse(text = sprintf("%s", paste("summary(model3)[['",
-			RSEstr, "']]*(", usefun[1], "1+sum( summary(model3)[['",
-			dfstr, "']],na.rm=TRUE))", usefun[2], sep = "")))
-		    modrank[3, 2] <- eval(evfun)
+		          evfun <- parse(text = sprintf("%s", paste("summary(model3)[['",
+		               RSEstr, "']]*(", usefun[1], "(1+sum( summary(model3)[['",
+           			dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
 		} else {
 		    nomods = nomods - 1
 		}
 		if (class(model4)[[1]] == "nlsList" & class(model4)[1] !=
 		    "try-error") {
-		    evfun <- parse(text = sprintf("%s", paste("summary(model4)[['",
-			RSEstr, "']]*(", usefun[1], "1+sum( summary(model4)[['",
-			dfstr, "']],na.rm=TRUE))", usefun[2], sep = "")))
-		    modrank[4, 2] <- eval(evfun)
+        		evfun <- parse(text = sprintf("%s", paste("summary(model4)[['",
+         		   RSEstr, "']]*(", usefun[1], "(1+sum( summary(model4)[['",
+          		  dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
+            modrank[4, 2] <- eval(evfun)
 		} else {
 		    nomods = nomods - 1
 		}
@@ -287,14 +294,15 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			submod <- as.character(substitute(model4))
 		    }
 		    submod <- substr(submod, 10, 11)
-		    assign("tempparam.select", submod, envir = globalenv())
+		    FPCEnv$tempparam.select <- submod
 		    return(model)
 		}
 	    }
 	    rncheck <- function(modname, existing = FALSE) {
 		modname <- as.character(substitute(modname))
-		assign("tempmodnm", modname, envir = globalenv())
-		modobj <- try(get(modname, envir = .GlobalEnv), silent = TRUE)
+		FPCEnv$tempmodnm <- modname
+		modobj <- try(get(as.character(substitute(modname)),envir = pcklib)
+		, silent = TRUE)
 		if (class(modobj)[1] == "try-error" | existing == FALSE |
 		    class(modobj)[1] == "NULL") {
 		    outp <- TRUE
@@ -305,25 +313,25 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    }
 	    rncheckfirst <- function(modname, existing = FALSE) {
 		modname <- as.character(substitute(modname))
-		modobj <- try(get(modname, envir = .GlobalEnv), silent = TRUE)
+		modobj <- try(get(as.character(substitute(modname)),envir = pcklib)
+		, silent = TRUE)
 		if (class(modobj)[1] == "try-error" | existing == FALSE) {
 		} else {
 		    return(modobj)
 		}
 	    }
 	    rnassign <- function() {
-		modname <- parse(text = sprintf("%s", get("tempmodnm",
-		    envir = .GlobalEnv)))
+		modname <- parse(text = sprintf("%s", FPCEnv$tempmodnm))
 		if (class(eval(modname)[1]) != "try-error") {
 		    chk <- try(unlist(summary(eval(modname)))["RSE"],
 			silent = TRUE)
 		    if (class(chk)[1] == "try-error") {
 			return(1)
 		    } else {
-			modnm <- sprintf("%s", get("tempmodnm", envir = .GlobalEnv))
-			assign("tempparam.select", substr(modnm, 10,
-			  11), envir = .GlobalEnv)
-			assign(modnm, eval(modname), envir = .GlobalEnv)
+			modnm <- sprintf("%s", FPCEnv$tempmodnm)
+			FPCEnv$tempparam.select <- substr(modnm, 10,
+			  11)
+			assign(modnm,eval(modname), pcklib)
 			return(eval(modname))
 		    }
 		} else {
@@ -331,36 +339,34 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		}
 	    }
 	    tstmod <- function(modelsub, modelcurrent) {
-		extraF <- try(get("extraF", envir = .GlobalEnv), silent = TRUE)
-		if (is.na(extraF(modelsub, modelcurrent)[4]) == FALSE) {
-		    if ((extraF(modelsub, modelcurrent)[4]) > 0.05 &
-			 sign(extraF(modelsub, modelcurrent)[1]) != -1 &
-			get("legitmodel", envir = .GlobalEnv)[1] == "legitmodelreset") {
+		extraF <- try(get("extraF", pos = 1), silent = TRUE)
+		if (is.na(extraF(modelsub, modelcurrent, warn = F)[4]) == FALSE) {
+		    if ((extraF(modelsub, modelcurrent, warn = F)[4]) > 0.05 &
+			 sign(extraF(modelsub, modelcurrent, warn = F)[1]) != -1 &
+			FPCEnv$legitmodel[1] == "legitmodelreset") {
 			currentmodel <- modelsub
 			return(currentmodel)
 		    } else {
-		     if(sign(extraF(modelsub, modelcurrent)[1]) != -1 &
-		       get("legitmodel", envir = .GlobalEnv)[1] ==
-		    			  "legitmodelreset") {
+		     if(sign(extraF(modelsub, modelcurrent, warn = F)[1]) != -1 &
+		       FPCEnv$legitmodel[1] ==  "legitmodelreset") {
 		    	  currentmodel <- modelcurrent
 			  return(currentmodel)
 		    }else{
-			if (get("legitmodel", envir = .GlobalEnv)[1] ==
-			  "legitmodelreset" ) {
+			if (FPCEnv$legitmodel[1] == "legitmodelreset" ) {
 			  currentmodel <- modelsub
 			  return(currentmodel)
 			} else {
-			  currentmodel <- get("legitmodel", envir = .GlobalEnv)
+			  currentmodel <- FPCEnv$legitmodel
 			  return(currentmodel)
 			}
 		     }
 		    }
 		} else {
-		    if (get("legitmodel", envir = .GlobalEnv)[1] == "legitmodelreset") {
+		    if (FPCEnv$legitmodel[1] == "legitmodelreset") {
 			currentmodel <- modelcurrent
 			return(currentmodel)
 		    } else {
-			currentmodel <- get("legitmodel", envir = .GlobalEnv)
+			currentmodel <- FPCEnv$legitmodel
 			return(currentmodel)
 		    }
 		}
@@ -368,7 +374,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    cnt <- 1
 	    step1submod <- FALSE
 	    step5submod <- FALSE
-	    assign("tempparam.select", "NONE", envir = globalenv())
+	    FPCEnv$tempparam.select <- "NONE"
 	    while (cnt < 6) {
 		if (modelsig < 0.05) {
 		    if (cnt == 1) {
@@ -378,12 +384,12 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  existing = existing)
 			if (rncheck(richardsR1.lis, existing = existing) ==
 			  TRUE)
-			  richardsR1.lis <- try({
+			  richardsR1.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = RAsym,
-			      Rk = Rk, Ri = Ri, RM = RM, modno = 1, pn.options = .modstptemp),
+			      Rk = Rk, Ri = Ri, RM = RM, modno = 1, pn.options = ",pnoptnm,"),
 			      data = userdata, ...)
-			  }, silent = TRUE)
+			  }, silent = TRUE)",sep=""))))
 			currentmodel <- rnassign()
 			if (class(currentmodel)[1] != "numeric")
 			  step1submod <- TRUE
@@ -395,53 +401,53 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  existing = existing)
 			if (rncheck(richardsR2.lis, existing = existing) ==
 			  TRUE)
-			  richardsR2.lis <- try({
+			  richardsR2.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = RAsym,
-			      Rk = Rk, Ri = Ri, RM = 1, modno = 2, pn.options = .modstptemp), data = userdata, ...)
-			  }, silent = TRUE)
+			      Rk = Rk, Ri = Ri, RM = 1, modno = 2, pn.options = ",pnoptnm,"), data = userdata, ...)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR7.lis  --")
 			richardsR7.lis <- rncheckfirst(richardsR7.lis,
 			  existing = existing)
 			if (rncheck(richardsR7.lis, existing = existing) ==
 			  TRUE)
-			  richardsR7.lis <- try({
+			  richardsR7.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = 1, Rk = Rk,
-			      Ri = Ri, RM = RM, modno = 7, pn.options = .modstptemp), data = userdata, ...)
-			  }, silent = TRUE)
+			      Ri = Ri, RM = RM, modno = 7, pn.options = ",pnoptnm,"), data = userdata, ...)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR6.lis  --")
 			richardsR6.lis <- rncheckfirst(richardsR6.lis,
 			  existing = existing)
 			if (rncheck(richardsR6.lis, existing = existing) ==
 			  TRUE)
-			  richardsR6.lis <- try({
+			  richardsR6.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = RAsym,
-			      Rk = 1, Ri = Ri, RM = RM, modno = 6, pn.options = .modstptemp), data = userdata, ...)
-			  }, silent = TRUE)
+			      Rk = 1, Ri = Ri, RM = RM, modno = 6, pn.options = ",pnoptnm,"), data = userdata, ...)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR8.lis  --")
 			richardsR8.lis <- rncheckfirst(richardsR8.lis,
 			  existing = existing)
 			if (rncheck(richardsR8.lis, existing = existing) ==
 			  TRUE)
-			  richardsR8.lis <- try({
+			  richardsR8.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = RAsym,
-			      Rk = Rk, Ri = 1, RM = RM, modno = 8, pn.options = .modstptemp), data = userdata, ...)
-			  }, silent = TRUE)
+			      Rk = Rk, Ri = 1, RM = RM, modno = 8, pn.options = ",pnoptnm,"), data = userdata, ...)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			submodel <- rankmod(richardsR2.lis, richardsR7.lis,
 			  richardsR6.lis, richardsR8.lis)
-			step2stat <- extraF(submodel, currentmodel)
+			step2stat <- extraF(submodel, currentmodel, warn = F)
 			currentmodel <- tstmod(submodel, currentmodel)
 		    }
 		    if (cnt == 3) {
 			print("Step 3 of a maximum of 6*********************************************************************")
-			currentmodID3 <- get("tempparam.select", envir = .GlobalEnv)
+			currentmodID3 <- FPCEnv$tempparam.select
 			if (currentmodID3 == "NONE")
 			  currentmodID3 = "2."
 			if (currentmodID3 == "2.") {
@@ -450,40 +456,40 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR14.lis, existing = existing) ==
 			    TRUE)
-			    richardsR14.lis <- try({
+			    richardsR14.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = Ri, RM = 1, modno = 14, pn.options = .modstptemp),
+				Rk = Rk, Ri = Ri, RM = 1, modno = 14, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR13.lis  --")
 			  richardsR13.lis <- rncheckfirst(richardsR13.lis,
 			    existing = existing)
 			  if (rncheck(richardsR13.lis, existing = existing) ==
 			    TRUE)
-			    richardsR13.lis <- try({
+			    richardsR13.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = Ri, RM = 1, modno = 13, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 13, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR15.lis  --")
 			  richardsR15.lis <- rncheckfirst(richardsR15.lis,
 			    existing = existing)
 			  if (rncheck(richardsR15.lis, existing = existing) ==
 			    TRUE)
-			    richardsR15.lis <- try({
+			    richardsR15.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = Rk, Ri = 1, RM = 1, modno = 15, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 15, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR14.lis, richardsR13.lis,
 			    richardsR15.lis)
-			  step3stat <- extraF(submodel, currentmodel)
+			  step3stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE")
@@ -494,40 +500,40 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR14.lis, existing = existing) ==
 			    TRUE)
-			    richardsR14.lis <- try({
+			    richardsR14.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = Ri, RM = 1, modno = 14, pn.options = .modstptemp),
+				Rk = Rk, Ri = Ri, RM = 1, modno = 14, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR3.lis  --")
 			  richardsR3.lis <- rncheckfirst(richardsR3.lis,
 			    existing = existing)
 			  if (rncheck(richardsR3.lis, existing = existing) ==
 			    TRUE)
-			    richardsR3.lis <- try({
+			    richardsR3.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = RM, modno = 3, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = RM, modno = 3, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR9.lis  --")
 			  richardsR9.lis <- rncheckfirst(richardsR9.lis,
 			    existing = existing)
 			  if (rncheck(richardsR9.lis, existing = existing) ==
 			    TRUE)
-			    richardsR9.lis <- try({
+			    richardsR9.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = RM, modno = 9, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = RM, modno = 9, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR14.lis, richardsR3.lis,
 			    richardsR9.lis)
-			  step3stat <- extraF(submodel, currentmodel)
+			  step3stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE")
@@ -538,40 +544,40 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR13.lis, existing = existing) ==
 			    TRUE)
-			    richardsR13.lis <- try({
+			    richardsR13.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = Ri, RM = 1, modno = 13, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 13, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR3.lis  --")
 			  richardsR3.lis <- rncheckfirst(richardsR3.lis,
 			    existing = existing)
 			  if (rncheck(richardsR3.lis, existing = existing) ==
 			    TRUE)
-			    richardsR3.lis <- try({
+			    richardsR3.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = RM, modno = 3, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = RM, modno = 3, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR4.lis  --")
 			  richardsR4.lis <- rncheckfirst(richardsR4.lis,
 			    existing = existing)
 			  if (rncheck(richardsR4.lis, existing = existing) ==
 			    TRUE)
-			    richardsR4.lis <- try({
+			    richardsR4.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = RM, modno = 4, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 4, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR13.lis, richardsR3.lis,
 			    richardsR4.lis)
-			  step3stat <- extraF(submodel, currentmodel)
+			  step3stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE")
@@ -582,46 +588,46 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR15.lis, existing = existing) ==
 			    TRUE)
-			    richardsR15.lis <- try({
+			    richardsR15.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = Rk, Ri = 1, RM = 1, modno = 15, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 15, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR9.lis  --")
 			  richardsR9.lis <- rncheckfirst(richardsR9.lis,
 			    existing = existing)
 			  if (rncheck(richardsR9.lis, existing = existing) ==
 			    TRUE)
-			    richardsR9.lis <- try({
+			    richardsR9.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = RM, modno = 9, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = RM, modno = 9, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR4.lis  --")
 			  richardsR4.lis <- rncheckfirst(richardsR4.lis,
 			    existing = existing)
 			  if (rncheck(richardsR4.lis, existing = existing) ==
 			    TRUE)
-			    richardsR4.lis <- try({
+			    richardsR4.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = RM, modno = 4, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 4, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR15.lis, richardsR9.lis,
 			    richardsR4.lis)
-			  step3stat <- extraF(submodel, currentmodel)
+			  step3stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 		    }
 		    if (cnt == 4) {
 			print("Step 4 of a maximum of 6*********************************************************************")
-			currentmodID2 <- get("tempparam.select", envir = .GlobalEnv)
+			currentmodID2 <- FPCEnv$tempparam.select
 			if (currentmodID3 == "NONE" & currentmodID2 ==
 			  "NONE") {
 			  currentmodID3 = "2."
@@ -634,27 +640,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR10.lis, existing = existing) ==
 			    TRUE)
-			    richardsR10.lis <- try({
+			    richardsR10.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR16.lis  --")
 			  richardsR16.lis <- rncheckfirst(richardsR16.lis,
 			    existing = existing)
 			  if (rncheck(richardsR16.lis, existing = existing) ==
 			    TRUE)
-			    richardsR16.lis <- try({
+			    richardsR16.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR10.lis, richardsR16.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -669,27 +675,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR10.lis, existing = existing) ==
 			    TRUE)
-			    richardsR10.lis <- try({
+			    richardsR10.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR11.lis  --")
 			  richardsR11.lis <- rncheckfirst(richardsR11.lis,
 			    existing = existing)
 			  if (rncheck(richardsR11.lis, existing = existing) ==
 			    TRUE)
-			    richardsR11.lis <- try({
+			    richardsR11.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR10.lis, richardsR11.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -704,27 +710,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR16.lis, existing = existing) ==
 			    TRUE)
-			    richardsR16.lis <- try({
+			    richardsR16.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR11.lis  --")
 			  richardsR11.lis <- rncheckfirst(richardsR11.lis,
 			    existing = existing)
 			  if (rncheck(richardsR11.lis, existing = existing) ==
 			    TRUE)
-			    richardsR11.lis <- try({
+			    richardsR11.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR16.lis, richardsR11.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -739,27 +745,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR10.lis, existing = existing) ==
 			    TRUE)
-			    richardsR10.lis <- try({
+			    richardsR10.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR16.lis  --")
 			  richardsR16.lis <- rncheckfirst(richardsR16.lis,
 			    existing = existing)
 			  if (rncheck(richardsR16.lis, existing = existing) ==
 			    TRUE)
-			    richardsR16.lis <- try({
+			    richardsR16.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR10.lis, richardsR16.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -774,27 +780,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR10.lis, existing = existing) ==
 			    TRUE)
-			    richardsR10.lis <- try({
+			    richardsR10.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR5.lis  --")
 			  richardsR5.lis <- rncheckfirst(richardsR5.lis,
 			    existing = existing)
 			  if (rncheck(richardsR5.lis, existing = existing) ==
 			    TRUE)
-			    richardsR5.lis <- try({
+			    richardsR5.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR10.lis, richardsR5.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -809,27 +815,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR16.lis, existing = existing) ==
 			    TRUE)
-			    richardsR16.lis <- try({
+			    richardsR16.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR5.lis  --")
 			  richardsR5.lis <- rncheckfirst(richardsR5.lis,
 			    existing = existing)
 			  if (rncheck(richardsR5.lis, existing = existing) ==
 			    TRUE)
-			    richardsR5.lis <- try({
+			    richardsR5.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR16.lis, richardsR5.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -844,27 +850,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR10.lis, existing = existing) ==
 			    TRUE)
-			    richardsR10.lis <- try({
+			    richardsR10.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR11.lis  --")
 			  richardsR11.lis <- rncheckfirst(richardsR11.lis,
 			    existing = existing)
 			  if (rncheck(richardsR11.lis, existing = existing) ==
 			    TRUE)
-			    richardsR11.lis <- try({
+			    richardsR11.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR10.lis, richardsR11.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -879,27 +885,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR10.lis, existing = existing) ==
 			    TRUE)
-			    richardsR10.lis <- try({
+			    richardsR10.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 10, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR5.lis  --")
 			  richardsR5.lis <- rncheckfirst(richardsR5.lis,
 			    existing = existing)
 			  if (rncheck(richardsR5.lis, existing = existing) ==
 			    TRUE)
-			    richardsR5.lis <- try({
+			    richardsR5.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR10.lis, richardsR5.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -914,27 +920,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR11.lis, existing = existing) ==
 			    TRUE)
-			    richardsR11.lis <- try({
+			    richardsR11.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR5.lis  --")
 			  richardsR5.lis <- rncheckfirst(richardsR5.lis,
 			    existing = existing)
 			  if (rncheck(richardsR5.lis, existing = existing) ==
 			    TRUE)
-			    richardsR5.lis <- try({
+			    richardsR5.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR11.lis, richardsR5.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -949,27 +955,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR16.lis, existing = existing) ==
 			    TRUE)
-			    richardsR16.lis <- try({
+			    richardsR16.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR11.lis  --")
 			  richardsR11.lis <- rncheckfirst(richardsR11.lis,
 			    existing = existing)
 			  if (rncheck(richardsR11.lis, existing = existing) ==
 			    TRUE)
-			    richardsR11.lis <- try({
+			    richardsR11.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR16.lis, richardsR11.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -984,27 +990,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR16.lis, existing = existing) ==
 			    TRUE)
-			    richardsR16.lis <- try({
+			    richardsR16.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 16, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR5.lis  --")
 			  richardsR5.lis <- rncheckfirst(richardsR5.lis,
 			    existing = existing)
 			  if (rncheck(richardsR5.lis, existing = existing) ==
 			    TRUE)
-			    richardsR5.lis <- try({
+			    richardsR5.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR16.lis, richardsR5.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1019,45 +1025,45 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR11.lis, existing = existing) ==
 			    TRUE)
-			    richardsR11.lis <- try({
+			    richardsR11.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 11, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR5.lis  --")
 			  richardsR5.lis <- rncheckfirst(richardsR5.lis,
 			    existing = existing)
 			  if (rncheck(richardsR5.lis, existing = existing) ==
 			    TRUE)
-			    richardsR5.lis <- try({
+			    richardsR5.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = M, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 5, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR11.lis, richardsR5.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 		    }
 		    if (cnt == 5) {
 			print("Step 5 of 6*********************************************************************")
-			currentmodID1 <- get("tempparam.select", envir = .GlobalEnv)
+			currentmodID1 <- FPCEnv$tempparam.select
 			print("--ASSESSING MODEL: richardsR12.lis  --")
 			richardsR12.lis <- rncheckfirst(richardsR12.lis,
 			  existing = existing)
 			if (rncheck(richardsR12.lis, existing = existing) ==
 			  TRUE)
-			  richardsR12.lis <- try({
+			  richardsR12.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = M, RAsym = 1, Rk = 1,
-			      Ri = 1, RM = 1, modno = 12, pn.options = .modstptemp), data = userdata, ...)
-			  }, silent = TRUE)
+			      Ri = 1, RM = 1, modno = 12, pn.options = ",pnoptnm,"), data = userdata, ...)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
-			step5stat <- extraF(richardsR12.lis, currentmodel)
+			step5stat <- extraF(richardsR12.lis, currentmodel, warn = F)
 			step5submod <- TRUE
 			currentmodel <- tstmod(richardsR12.lis, currentmodel)
 		    }
@@ -1072,12 +1078,12 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  existing = existing)
 			if (rncheck(richardsR21.lis, existing = existing) ==
 			  TRUE)
-			  richardsR21.lis <- try({
+			  richardsR21.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = RAsym,
-			      Rk = Rk, Ri = Ri, RM = RM, modno = 21, pn.options = .modstptemp),
+			      Rk = Rk, Ri = Ri, RM = RM, modno = 21, pn.options = ",pnoptnm,"),
 			      data = userdata, ...)
-			  }, silent = TRUE)
+			  }, silent = TRUE)",sep=""))))
 			currentmodel <- rnassign()
 			if (class(currentmodel)[1] != "numeric")
 			  step1submod <- TRUE
@@ -1089,56 +1095,56 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  existing = existing)
 			if (rncheck(richardsR22.lis, existing = existing) ==
 			  TRUE)
-			  richardsR22.lis <- try({
+			  richardsR22.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = RAsym,
-			      Rk = Rk, Ri = Ri, RM = 1, modno = 22, pn.options = .modstptemp),
+			      Rk = Rk, Ri = Ri, RM = 1, modno = 22, pn.options = ",pnoptnm,"),
 			      data = userdata, ...)
-			  }, silent = TRUE)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR27.lis  --")
 			richardsR27.lis <- rncheckfirst(richardsR27.lis,
 			  existing = existing)
 			if (rncheck(richardsR27.lis, existing = existing) ==
 			  TRUE)
-			  richardsR27.lis <- try({
+			  richardsR27.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = 1, Rk = Rk,
-			      Ri = Ri, RM = RM, modno = 27, pn.options = .modstptemp), data = userdata, ...)
-			  }, silent = TRUE)
+			      Ri = Ri, RM = RM, modno = 27, pn.options = ",pnoptnm,"), data = userdata, ...)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR26.lis  --")
 			richardsR26.lis <- rncheckfirst(richardsR26.lis,
 			  existing = existing)
 			if (rncheck(richardsR26.lis, existing = existing) ==
 			  TRUE)
-			  richardsR26.lis <- try({
+			  richardsR26.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = RAsym,
-			      Rk = 1, Ri = Ri, RM = RM, modno = 26, pn.options = .modstptemp),
+			      Rk = 1, Ri = Ri, RM = RM, modno = 26, pn.options = ",pnoptnm,"),
 			      data = userdata, ...)
-			  }, silent = TRUE)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			print("--ASSESSING MODEL: richardsR28.lis  --")
 			richardsR28.lis <- rncheckfirst(richardsR28.lis,
 			  existing = existing)
 			if (rncheck(richardsR28.lis, existing = existing) ==
 			  TRUE)
-			  richardsR28.lis <- try({
+			  richardsR28.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = RAsym,
-			      Rk = Rk, Ri = 1, RM = RM, modno = 28, pn.options = .modstptemp),
+			      Rk = Rk, Ri = 1, RM = RM, modno = 28, pn.options = ",pnoptnm,"),
 			      data = userdata, ...)
-			  }, silent = TRUE)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			submodel <- rankmod(richardsR22.lis, richardsR27.lis,
 			  richardsR26.lis, richardsR28.lis)
-			step2stat <- extraF(submodel, currentmodel)
+			step2stat <- extraF(submodel, currentmodel, warn = F)
 			currentmodel <- tstmod(submodel, currentmodel)
 		    }
 		    if (cnt == 3) {
 			print("Step 3 of a maximum of 6*********************************************************************")
-			currentmodID3 <- get("tempparam.select", envir = .GlobalEnv)
+			currentmodID3 <- FPCEnv$tempparam.select
 			if (currentmodID3 == "NONE")
 			  currentmodID3 = "22"
 			if (currentmodID3 == "22") {
@@ -1147,40 +1153,40 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR34.lis, existing = existing) ==
 			    TRUE)
-			    richardsR34.lis <- try({
+			    richardsR34.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = Ri, RM = 1, modno = 34, pn.options = .modstptemp),
+				Rk = Rk, Ri = Ri, RM = 1, modno = 34, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR33.lis  --")
 			  richardsR33.lis <- rncheckfirst(richardsR33.lis,
 			    existing = existing)
 			  if (rncheck(richardsR33.lis, existing = existing) ==
 			    TRUE)
-			    richardsR33.lis <- try({
+			    richardsR33.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = Ri, RM = 1, modno = 33, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 33, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR35.lis  --")
 			  richardsR35.lis <- rncheckfirst(richardsR35.lis,
 			    existing = existing)
 			  if (rncheck(richardsR35.lis, existing = existing) ==
 			    TRUE)
-			    richardsR35.lis <- try({
+			    richardsR35.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = Rk, Ri = 1, RM = 1, modno = 35, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 35, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR34.lis, richardsR33.lis,
 			    richardsR35.lis)
-			  step3stat <- extraF(submodel, currentmodel)
+			  step3stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE")
@@ -1191,40 +1197,40 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR34.lis, existing = existing) ==
 			    TRUE)
-			    richardsR34.lis <- try({
+			    richardsR34.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = Ri, RM = 1, modno = 34, pn.options = .modstptemp),
+				Rk = Rk, Ri = Ri, RM = 1, modno = 34, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR23.lis  --")
 			  richardsR23.lis <- rncheckfirst(richardsR23.lis,
 			    existing = existing)
 			  if (rncheck(richardsR23.lis, existing = existing) ==
 			    TRUE)
-			    richardsR23.lis <- try({
+			    richardsR23.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = RM, modno = 23, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = RM, modno = 23, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR29.lis  --")
 			  richardsR29.lis <- rncheckfirst(richardsR29.lis,
 			    existing = existing)
 			  if (rncheck(richardsR29.lis, existing = existing) ==
 			    TRUE)
-			    richardsR29.lis <- try({
+			    richardsR29.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = RM, modno = 29, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = RM, modno = 29, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR34.lis, richardsR23.lis,
 			    richardsR29.lis)
-			  step3stat <- extraF(submodel, currentmodel)
+			  step3stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE")
@@ -1235,40 +1241,40 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR33.lis, existing = existing) ==
 			    TRUE)
-			    richardsR33.lis <- try({
+			    richardsR33.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = Ri, RM = 1, modno = 33, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 33, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR23.lis  --")
 			  richardsR23.lis <- rncheckfirst(richardsR23.lis,
 			    existing = existing)
 			  if (rncheck(richardsR23.lis, existing = existing) ==
 			    TRUE)
-			    richardsR23.lis <- try({
+			    richardsR23.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = RM, modno = 23, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = RM, modno = 23, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR24.lis  --")
 			  richardsR24.lis <- rncheckfirst(richardsR24.lis,
 			    existing = existing)
 			  if (rncheck(richardsR24.lis, existing = existing) ==
 			    TRUE)
-			    richardsR24.lis <- try({
+			    richardsR24.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = RM, modno = 24, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 24, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR33.lis, richardsR23.lis,
 			    richardsR24.lis)
-			  step3stat <- extraF(submodel, currentmodel)
+			  step3stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE")
@@ -1279,46 +1285,46 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR35.lis, existing = existing) ==
 			    TRUE)
-			    richardsR35.lis <- try({
+			    richardsR35.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = Rk, Ri = 1, RM = 1, modno = 35, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 35, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR29.lis  --")
 			  richardsR29.lis <- rncheckfirst(richardsR29.lis,
 			    existing = existing)
 			  if (rncheck(richardsR29.lis, existing = existing) ==
 			    TRUE)
-			    richardsR29.lis <- try({
+			    richardsR29.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = RM, modno = 29, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = RM, modno = 29, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR24.lis  --")
 			  richardsR24.lis <- rncheckfirst(richardsR24.lis,
 			    existing = existing)
 			  if (rncheck(richardsR24.lis, existing = existing) ==
 			    TRUE)
-			    richardsR24.lis <- try({
+			    richardsR24.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = RM, modno = 24, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 24, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR35.lis, richardsR29.lis,
 			    richardsR24.lis)
-			  step3stat <- extraF(submodel, currentmodel)
+			  step3stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 		    }
 		    if (cnt == 4) {
 			print("Step 4 of a maximum of 6*********************************************************************")
-			currentmodID2 <- get("tempparam.select", envir = .GlobalEnv)
+			currentmodID2 <- FPCEnv$tempparam.select
 			if (currentmodID3 == "NONE" & currentmodID2 ==
 			  "NONE") {
 			  currentmodID3 = "22"
@@ -1331,27 +1337,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR30.lis, existing = existing) ==
 			    TRUE)
-			    richardsR30.lis <- try({
+			    richardsR30.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR36.lis  --")
 			  richardsR36.lis <- rncheckfirst(richardsR36.lis,
 			    existing = existing)
 			  if (rncheck(richardsR36.lis, existing = existing) ==
 			    TRUE)
-			    richardsR36.lis <- try({
+			    richardsR36.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR30.lis, richardsR36.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1366,27 +1372,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR30.lis, existing = existing) ==
 			    TRUE)
-			    richardsR30.lis <- try({
+			    richardsR30.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR31.lis  --")
 			  richardsR31.lis <- rncheckfirst(richardsR31.lis,
 			    existing = existing)
 			  if (rncheck(richardsR31.lis, existing = existing) ==
 			    TRUE)
-			    richardsR31.lis <- try({
+			    richardsR31.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR30.lis, richardsR31.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1401,27 +1407,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR36.lis, existing = existing) ==
 			    TRUE)
-			    richardsR36.lis <- try({
+			    richardsR36.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR31.lis  --")
 			  richardsR31.lis <- rncheckfirst(richardsR31.lis,
 			    existing = existing)
 			  if (rncheck(richardsR31.lis, existing = existing) ==
 			    TRUE)
-			    richardsR31.lis <- try({
+			    richardsR31.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR36.lis, richardsR31.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1436,27 +1442,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR30.lis, existing = existing) ==
 			    TRUE)
-			    richardsR30.lis <- try({
+			    richardsR30.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR36.lis  --")
 			  richardsR36.lis <- rncheckfirst(richardsR36.lis,
 			    existing = existing)
 			  if (rncheck(richardsR36.lis, existing = existing) ==
 			    TRUE)
-			    richardsR36.lis <- try({
+			    richardsR36.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR30.lis, richardsR36.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1471,27 +1477,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR30.lis, existing = existing) ==
 			    TRUE)
-			    richardsR30.lis <- try({
+			    richardsR30.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR25.lis  --")
 			  richardsR25.lis <- rncheckfirst(richardsR25.lis,
 			    existing = existing)
 			  if (rncheck(richardsR25.lis, existing = existing) ==
 			    TRUE)
-			    richardsR25.lis <- try({
+			    richardsR25.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR30.lis, richardsR25.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1506,27 +1512,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR36.lis, existing = existing) ==
 			    TRUE)
-			    richardsR36.lis <- try({
+			    richardsR36.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR25.lis  --")
 			  richardsR25.lis <- rncheckfirst(richardsR25.lis,
 			    existing = existing)
 			  if (rncheck(richardsR25.lis, existing = existing) ==
 			    TRUE)
-			    richardsR25.lis <- try({
+			    richardsR25.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR36.lis, richardsR25.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1541,27 +1547,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR30.lis, existing = existing) ==
 			    TRUE)
-			    richardsR30.lis <- try({
+			    richardsR30.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR31.lis  --")
 			  richardsR31.lis <- rncheckfirst(richardsR31.lis,
 			    existing = existing)
 			  if (rncheck(richardsR31.lis, existing = existing) ==
 			    TRUE)
-			    richardsR31.lis <- try({
+			    richardsR31.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR30.lis, richardsR31.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1576,27 +1582,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR30.lis, existing = existing) ==
 			    TRUE)
-			    richardsR30.lis <- try({
+			    richardsR30.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = .modstptemp),
+				Rk = 1, Ri = Ri, RM = 1, modno = 30, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR25.lis  --")
 			  richardsR25.lis <- rncheckfirst(richardsR25.lis,
 			    existing = existing)
 			  if (rncheck(richardsR25.lis, existing = existing) ==
 			    TRUE)
-			    richardsR25.lis <- try({
+			    richardsR25.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR30.lis, richardsR25.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1611,27 +1617,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR31.lis, existing = existing) ==
 			    TRUE)
-			    richardsR31.lis <- try({
+			    richardsR31.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR25.lis  --")
 			  richardsR25.lis <- rncheckfirst(richardsR25.lis,
 			    existing = existing)
 			  if (rncheck(richardsR25.lis, existing = existing) ==
 			    TRUE)
-			    richardsR25.lis <- try({
+			    richardsR25.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR31.lis, richardsR25.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1646,27 +1652,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR36.lis, existing = existing) ==
 			    TRUE)
-			    richardsR36.lis <- try({
+			    richardsR36.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR31.lis  --")
 			  richardsR31.lis <- rncheckfirst(richardsR31.lis,
 			    existing = existing)
 			  if (rncheck(richardsR31.lis, existing = existing) ==
 			    TRUE)
-			    richardsR31.lis <- try({
+			    richardsR31.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR36.lis, richardsR31.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1681,27 +1687,27 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR36.lis, existing = existing) ==
 			    TRUE)
-			    richardsR36.lis <- try({
+			    richardsR36.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = .modstptemp),
+				Rk = Rk, Ri = 1, RM = 1, modno = 36, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR25.lis  --")
 			  richardsR25.lis <- rncheckfirst(richardsR25.lis,
 			    existing = existing)
 			  if (rncheck(richardsR25.lis, existing = existing) ==
 			    TRUE)
-			    richardsR25.lis <- try({
+			    richardsR25.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR36.lis, richardsR25.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 			if (currentmodID3 == "NONE" & currentmodID2 ==
@@ -1716,43 +1722,43 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			    existing = existing)
 			  if (rncheck(richardsR31.lis, existing = existing) ==
 			    TRUE)
-			    richardsR31.lis <- try({
+			    richardsR31.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = RAsym,
-				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = 1, modno = 31, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  print("--ASSESSING MODEL: richardsR25.lis  --")
 			  richardsR25.lis <- rncheckfirst(richardsR25.lis,
 			    existing = existing)
 			  if (rncheck(richardsR25.lis, existing = existing) ==
 			    TRUE)
-			    richardsR25.lis <- try({
+			    richardsR25.lis <- eval(parse(text=sprintf("%s",paste("try({
 			      nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 				K = K, Infl = Infl, M = 1, RAsym = 1,
-				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = .modstptemp),
+				Rk = 1, Ri = 1, RM = RM, modno = 25, pn.options = ",pnoptnm,"),
 				data = userdata, ...)
-			    }, silent = TRUE)
+			    }, silent = TRUE)",sep=""))))
 			  dump <- rnassign()
 			  submodel <- rankmod(richardsR31.lis, richardsR25.lis)
-			  step4stat <- extraF(submodel, currentmodel)
+			  step4stat <- extraF(submodel, currentmodel, warn = F)
 			  currentmodel <- tstmod(submodel, currentmodel)
 			}
 		    }
 		    if (cnt == 5) {
 			print("Step 5 of 6*********************************************************************")
-			currentmodID1 <- get("tempparam.select", envir = .GlobalEnv)
+			currentmodID1 <- FPCEnv$tempparam.select
 			print("--ASSESSING MODEL: richardsR32.lis  --")
 			richardsR32.lis <- rncheckfirst(richardsR32.lis,
 			  existing = existing)
 			if (rncheck(richardsR32.lis, existing = existing) ==
 			  TRUE)
-			  richardsR32.lis <- try({
+			  richardsR32.lis <- eval(parse(text=sprintf("%s",paste("try({
 			    nlsList(y ~ SSposnegRichards(x, Asym = Asym,
 			      K = K, Infl = Infl, M = 1, RAsym = 1, Rk = 1,
-			      Ri = 1, RM = 1, modno = 32, pn.options = .modstptemp), data = userdata, ...)
-			  }, silent = TRUE)
+			      Ri = 1, RM = 1, modno = 32, pn.options = ",pnoptnm,"), data = userdata, ...)
+			  }, silent = TRUE)",sep=""))))
 			dump <- rnassign()
 			step5stat <- extraF(richardsR32.lis, currentmodel)
 			step5submod <- TRUE
@@ -1778,7 +1784,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		print("Step 6 of 6*********************************************************************")
 		if (class (mostreducedmod)[1] != "numeric"){
 		mod5 <- mostreducednm
-		step6stat <- extraF(mostreducedmod, currentmodel)
+		step6stat <- extraF(mostreducedmod, currentmodel, warn = F)
 		currentmodel <- tstmod(mostreducedmod, currentmodel)
 		} else {
 		step6stat <- NA
@@ -1807,6 +1813,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    pval <- rep(NA, 6)
 	    RSSgen <- rep(NA, 6)
 	    RSSsub <- rep(NA, 6)
+	    countfit <- 0
 	    for (i in 1:6) {
 		if (i > 1) {
 		    if (modnames[i] == "" & modnames[i - 1] == "") {
@@ -1815,8 +1822,13 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			testof[i] <- paste("|      ", modnames[i], " vs ",
 			  modnames[i - 1], "      |", sep = "")
 		    }
+		    options(warn = -1)
+		    assessfits <- try( eval(parse(paste("step",i, "stat", sep = ""))), silent = TRUE)
+		    if (class(assessfits)[1] == "try-error") countfit <- countfit + 1
+		    if (i == 6 & countfit == 0) stop("No models were successfully fitted. Aborting..... Please check your data or change argument options.")
 		    currstat <- eval(parse(text = sprintf("%s", (paste("step",
 			i, "stat", sep = "")))))
+		    options(warn = 0)
 		    xf[i] <- round(as.numeric(currstat[1]), 4)
 		    dfn[i] <- as.numeric(currstat[2])
 		    dfd[i] <- as.numeric(currstat[3])
@@ -1869,11 +1881,21 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		"Step 4", "Step 5", "Step 6")
 	    stepwisetable[is.na(stepwisetable)] <- ""
 	    print("###########  Minimal applicable model arrived at by stepwise reduction is saved as pn.bestmodel.lis  ################")
-	    assign("pn.bestmodel.lis", currentmodel, envir = globalenv())
+	    assign("pn.bestmodel.lis", currentmodel, envir = Envir)
+	    print("writing output to environment:")
+	    print(Envir)
+	    get.mod(to.envir = Envir, write.mod = TRUE)
+	    assign("userdata",userdata, envir = Envir)
+	    options(warn=-1)
+	    try(rm("model1",envir = FPCEnv),silent=T)
+	    try(rm("tempparam.select",envir = FPCEnv),silent=T)
+	    try(rm("tempmodnm",envir = FPCEnv),silent=T)
+	    try(rm("legitmodel",envir = FPCEnv),silent=T)
+	    options( warn = 0)
 	    return(stepwisetable)
 	    ##value<< A \code{\link{data.frame}} containing statistics produced by \code{\link{extraF}}
 	    ## evaluations at each step, detailing the name of the general and best reduced model at each
-	    ## step. The overall best model evaluated by the end of the function is saved globally as
+	    ## step. The overall best model evaluated by the end of the function is saved in specified environment as
 	    ## \eqn{pn.bestmodel.lis}
 	    ## The naming convention for models is a concatenation of 'richardsR', the modno and '.lis'
 	    ## (see \code{\link{SSposnegRichards}}).
@@ -1888,7 +1910,6 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 }
 , ex = function(){
 #run model selection for posneg.data object (only first 3 group levels for example's sake)
-data(posneg.data)
 subdata<-subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
 modseltable <- pn.modselect.step(subdata$age, subdata$mass,
     subdata$id, existing = FALSE)
