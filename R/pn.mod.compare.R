@@ -126,7 +126,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
    if ((class(richardsR20.lis)[1]) == "try-error"| class(chk1)[1] == "try-error" 
     	| class(richardsR20.lis)[[1]] != "nlsList" ) {
         print("3 parameter positive richards model failed/not fitted*************************************")
-        forcemod = 4
+        if(forcemod != 3) forcemod = 4
         richardsR20.lis <- 1
         } else {
 	FPCEnv$richardsR20.lis <- richardsR20.lis
@@ -135,7 +135,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
     	| class(richardsR12.lis)[[1]] != "nlsList" )
         {
             print("4 parameter positive richards model failed/not fitted*************************************")
-            forcemod = 3
+        if(forcemod != 4)  forcemod = 3
             richardsR12.lis <- 1
         } else {
 	FPCEnv$richardsR12.lis <- richardsR12.lis
@@ -449,8 +449,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
 #run model selection for posneg.data object (only first 3 group levels for example's sake)
 subdata <- subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
 modseltable <- pn.mod.compare(subdata$age, subdata$mass,
-    subdata$id, existing = FALSE)
-    
+    subdata$id, existing = FALSE, pn.options = "myoptions")
 #fit nlsList model initially and then run model selection
 #for posneg.data object when at least one model is already fit
 # note forcemod is set to 3 so that models 21-36 are evaluated

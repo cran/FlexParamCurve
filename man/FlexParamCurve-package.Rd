@@ -21,8 +21,12 @@ Note that if you perform this step, then you do not need to perform step 1.
 If you are sure of your model (e.g. it is a simple logistic) Step 2 may be unnecessary.
 
     3) Fit \eqn{nls} or \eqn{nlsList} or \eqn{nlme} models using \eqn{SSposnegRichards} specifying
-the appropriate model number and the list of parameters and options. Parameter bounds can be refined to improve fits by altering 
-this list, either manually or using \code{\link{change.pnparameters}}.
+the appropriate model number and the list of parameters and options (specified pn.options object). 
+Note if required model is monotonic (i.e. contains no recession parameters, modno= 12 or 32) recessional parameters
+will be ignored unless "force.nonmonotonic" option is TRUE in the specified pn.options list
+object (see \eqn{modpar}) in which case they will be included as fixed values from the list object.
+Parameter bounds can be refinedto improve fits by altering this list, either manually or using
+\code{\link{change.pnparameters}}.
 
     4) Plot your curves using eqn{posnegRichards.eqn} specifying the appropriate model number and list of parameters/options.
 

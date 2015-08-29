@@ -22,7 +22,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     pnoptname <- as.character( pcall[["pn.options"]])
     nmpnmodelparams <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
    	"Ri", "RM", "first.y", "x.at.first.y", "last.y", "x.at.last.y",
-   	"twocomponent.x","verbose","force4par")
+   	"twocomponent.x","verbose","force4par","force.nonmonotonic")
     nmpnmodelparamsbounds <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
 	"Imax", "Mmin", "Mmax", "RAmin", "RAmax", "Rkmin", "Rkmax",
 	"Rimin", "Rimax", "RMmin", "RMmax") 
@@ -104,7 +104,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   (RAsym/Re(as.complex(1 + exp(Ri - x)/RM)))
             }
         } else {
-            if (pnmodelparams$force4par == TRUE) {
+            if (pnmodelparams$force4par == TRUE | (pnmodelparams$force.nonmonotonic == FALSE & modno == 12) |
+            (pnmodelparams$force.nonmonotonic == FALSE & modno == 32) ) {
                 (Asym/Re(as.complex(1 + M * exp(-K * ((x) - Infl)))^(fractM)))
             } else {
                 (Asym/Re(as.complex(1 + M * exp(-K * ((x) - Infl)))^(fractM))) + 
@@ -165,12 +166,12 @@ SSposnegRichards <- structure(function(x, Asym = NA,
      					  }
      pntbndserr <- FALSE
      if(length(optvar$bounds.error) == 1) pntbndserr <- TRUE
-  	    skel <- rep(list(1), 15)
-	    pnmodelparams <- c(rep(NA, 12),rep(FALSE,3))
+  	    skel <- rep(list(1), 16)
+	    pnmodelparams <- c(rep(NA, 12),rep(FALSE,4))
 	    pnmodelparams <- relist(pnmodelparams, skel)	    
 	    names(pnmodelparams) <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
 		"Ri", "RM", "first.y", "x.at.first.y", "last.y", "x.at.last.y",
-		"twocomponent.x","verbose","force4par")  
+		"twocomponent.x","verbose","force4par", "force.nonmonotonic")  
 	    skel <- rep(list(1), 16)
 	    pnmodelparamsbounds <- c(rep(NA, 16))
 	    pnmodelparamsbounds <- relist(pnmodelparamsbounds, skel)
@@ -196,11 +197,11 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 		sapply(names(parsprovided), function(x) substring(x[[1]],1,2)))])
 	    "%w/o%" <- function(x, y) x[!x %in% y] #--  x without y
 	    unmatchbounds <- (names(boundsprovided) %w/o% matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
-		"twocomponent.x","verbose","force4par")
+		"twocomponent.x","verbose","force4par", "force.nonmonotonic")
 	    modno <- mCall[["modno"]]
 	    if(modno == 12 | modno == 32 | optvar$force4par == TRUE) unmatchbounds <- (names(boundsprovided) %w/o% 
 	    	 matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
-		"twocomponent.x","verbose","force4par", "RAmin","RAmax","Rkmin","Rkmax","Rimin","Rimax","RMmin","RMmax")
+		"twocomponent.x","verbose","force4par", "force.nonmonotonic", "RAmin","RAmax","Rkmin","Rkmax","Rimin","Rimax","RMmin","RMmax")
 	    .paramsestimated <- try( FPCEnv$.paramsestimated ,silent = TRUE)
 	    if( class(.paramsestimated) == "try-error" ) .paramsestimated <- TRUE
 	    if(modno != 18 & modno != 19 ){
@@ -210,7 +211,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
        	    parseval("substparams <- modpar(xy$x, xy$y, first.y = pnmodelparams$first.y, x.at.first.y = pnmodelparams$x.at.first.y,
     		last.y = pnmodelparams$last.y,
     		x.at.last.y = pnmodelparams$x.at.last.y, twocomponent.x = pnmodelparams$twocomponent.x, verbose = pnmodelparams$verbose,
-    		force4par = pnmodelparams$force4par, Envir = Envir, pn.options =\"", as.character(optvarnm),"\")")
+    		force4par = pnmodelparams$force4par, Envir = Envir, force.nonmonotonic = pnmodelparams$force.nonmonotonic
+    		, pn.options =\"", as.character(optvarnm),"\")")
     	options(warn=-1)
     	pnmodelparams[which(names(pnmodelparams) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparams))]
     	pnmodelparamsbounds[which(names(pnmodelparamsbounds) %in% names(substparams))] <- substparams[which(names(substparams) %in% names(pnmodelparamsbounds))]
@@ -220,9 +222,9 @@ SSposnegRichards <- structure(function(x, Asym = NA,
   					}
     valexp <- sapply( c(unlist(pnmodelparams),unlist(pnmodelparamsbounds), 
         	unlist( optvar[names(optvar) %w/o% c(names(pnmodelparamsbounds),names(pnmodelparams)) ]) ), function(x) list(x))
-    names( valexp[1:31] ) <- names( c(pnmodelparams[1:15],pnmodelparamsbounds) )
-    valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
-    valexp[14:15] <- as.logical( valexp[14:15] )
+    names( valexp[1:32] ) <- names( c(pnmodelparams[1:16],pnmodelparamsbounds) )
+    valexp[c(1:12,17:32)] <- as.numeric( valexp[c(1:12,17:32)] )
+    valexp[14:16] <- as.logical( valexp[14:16] )
     if(is.numeric(pnmodelparams$twocomponent.x)) {
         valexp[13] <- as.numeric( valexp[13] )
     } else {
@@ -232,7 +234,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     modno <- mCall[["modno"]]
     if( !is.numeric(modno)) modno <- get(as.character(modno), envir = Envir)
     invars <- mCall
-    modelparams <- valexp[1:15]
+    modelparams <- valexp[1:16]
     if (is.na(modelparams[1]) == TRUE) {
         if (modno != 18 & modno != 19) {
             stop("ERROR: saved parameters empty or Asym missing: run function modpar before using selfStart functions: see ?modpar")
@@ -413,12 +415,23 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 xval[i - 1])
         }
         }
-        Intage <- NA
+         Intage <- NA
         stationry <- data.frame(xval, movavg)
+        datalength <- nrow(stationry)
         stationry <- subset(stationry, slpe > -0.005 & slpe < 
             0.005)
+        subid.1 <- as.numeric(row.names(stationry))
+        teststart <- subid.1[1]
         peakage1<-min(xy$x, na.rm = TRUE)
         peakage2<-min(xy$x, na.rm = TRUE)
+        if(nrow(stationry) > 0 ){
+        if(teststart/datalength <= 0.2) {
+            newstart <- ceiling(0.21*datalength)
+            subid.2 <- subid.1[subid.1 >= newstart]
+            stationry <- data.frame(xval, movavg)
+            stationry <- stationry[subid.2,]
+        }
+                                 }
         if (length(stationry[, 1]) > 2) {
             savpeakmass2<-NA
             savpeakage2<-NA
@@ -636,9 +649,9 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 optvar$twocomponent.x <- Intage
                 valexp <- sapply( c(unlist(pnmodelparams),unlist(pnmodelparamsbounds), 
         		unlist( optvar[names(optvar) %w/o% c(names(pnmodelparams),names(pnmodelparamsbounds)) ]) ), function(x) list(x))
-   		names( valexp[1:31] ) <- names( c(pnmodelparams[1:15],pnmodelparamsbounds) )
-    		valexp[1:31] <- as.numeric( valexp[1:31] )
-    		valexp[14:15] <- as.logical( valexp[14:15] )
+   		names( valexp[1:32] ) <- names( c(pnmodelparams[1:16],pnmodelparamsbounds) )
+		valexp[c(1:12,17:32)] <- as.numeric( valexp[c(1:12,17:32)] )
+		valexp[14:16] <- as.logical( valexp[14:16] )
     		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
     		assign(optvarnm, valexp, envir = Envir )    		    
             }
@@ -651,7 +664,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                 na.rm = TRUE))[1])
     if (Intage == min(xy$x)) 
         Intage <- max(xy$x)
-    if (modelparams$force4par == TRUE) {
+    if (modelparams$force4par == TRUE | (modelparams$force.nonmonotonic == FALSE & modno == 12) |
+            (modelparams$force.nonmonotonic == FALSE & modno == 32) ) {
         xyE <- xy
         maxIval<- try(max(xyE$x, na.rm = TRUE) - 
         	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
@@ -942,30 +956,30 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         Infl <- val3[3]
         M <- val3[4]
         try(if(Asym > Amax) {
-        if(pntbndserr == TRUE) stop("Upper bounds for Asym are too low: Asym > Amax. If you wish bounds to be reestimated
+        if(pntbndserr == TRUE) stop("Upper bounds for Asym are too low: optimized Asym > Amax. If you wish bounds to be reestimated
         	automatically, specify bounds.error = FALSE in modpar") 
-        cat("WARNING: Upper bounds for Asym are too low: Asym > Amax. These will be adjusted. Alternatively
+        cat("WARNING: Upper bounds for Asym are too low: optimized Asym > Amax. These will be adjusted. Alternatively
         	try runing modpar with option width.bounds set to more than 1 \n")
  	Amax <- as.numeric(Asym + (Asym * largemult))
       		}, silent = TRUE)
         try(if(Asym < Amin) {
-        if(pntbndserr == TRUE) stop("Lower bounds for Asym are too high: Asym < Amin. If you wish bounds to be reestimated
+        if(pntbndserr == TRUE) stop("Lower bounds for Asym are too high:optimized Asym < Amin. If you wish bounds to be reestimated
         	automatically, specify bounds.error = FALSE in modpar")         
-        cat("WARNING: Lower bounds for Asym are too high: Asym < Amin. These will be adjusted. Alternatively
+        cat("WARNING: Lower bounds for Asym are too high: optimized Asym < Amin. These will be adjusted. Alternatively
         	try runing modpar with option width.bounds set to more than 1 \n")
         Amin <- as.numeric(Asym + (Asym * -largemult))
         		}, silent = TRUE)
         try(if(Infl > Imax) {
-        if(pntbndserr == TRUE) stop("Upper bounds for Infl are too low: Infl  > Imax. If you wish bounds to be reestimated
+        if(pntbndserr == TRUE) stop("Upper bounds for Infl are too low: optimized Infl  > Imax. If you wish bounds to be reestimated
         	automatically, specify bounds.error = FALSE in modpar")         
-        cat("WARNING: Upper bounds for Infl are too low: Infl  > Imax. These will be adjusted. Alternatively
+        cat("WARNING: Upper bounds for Infl are too low: optimized Infl  > Imax. These will be adjusted. Alternatively
         	try runing modpar with option width.bounds set to more than 1 \n")
         Imax <- as.numeric(Infl + (Infl * largemult))
         		}, silent = TRUE)
         try(if(Infl < Imin) {
-        if(pntbndserr == TRUE) stop("Lower bounds for Infl are too high: Infl < Imin. If you wish bounds to be reestimated
+        if(pntbndserr == TRUE) stop("Lower bounds for Infl are too high: optimized Infl < Imin. If you wish bounds to be reestimated
          	automatically, specify bounds.error = FALSE in modpar")         
-        cat("WARNING: Lower bounds for Infl are too high: Infl < Imin. These will be adjusted. Alternatively
+        cat("WARNING: Lower bounds for Infl are too high: optimized Infl < Imin. These will be adjusted. Alternatively
         	try runing modpar with option width.bounds set to more than 1 \n")
         Imin <- as.numeric(Infl + (Infl * -largemult))
         		}, silent = TRUE)
@@ -1343,7 +1357,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
              }	   			
 	    }	    
 	           if(is.na(Risav)) Risav <- tAsym
-                skel <- rep(list(1), 15)
+                skel <- rep(list(1), 16)
                 if(!is.na(modelparams$twocomponent.x)) {
  		            subxyp <- subset(xyE$x, !is.na(xyE$x) )
 		            addRAsym <- richards(subxyp [length(subxyp )], Asym, K, Infl, M)
@@ -1354,15 +1368,16 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   K, Risav, M, modelparams$first.y, modelparams$x.at.first.y,
                   modelparams$last.y, 
                   modelparams$x.at.last.y, modelparams$twocomponent.x, 
-                  modelparams$verbose, modelparams$force4par)
+                  modelparams$verbose, modelparams$force4par, modelparams$force.nonmonotonic)
                 exportparams <- relist(exportparams, skel)
                 names(exportparams) <- c("Asym", "K", "Infl", 
                   "M", "RAsym", "Rk", "Ri", "RM", "first.y", "x.at.first.y",
                   "last.y", "x.at.last.y", "twocomponent.x", 
-                  "verbose", "force4par")
+                  "verbose", "force4par", "force.nonmonotonic")
                 exportparams$twocomponent.x <- modelparams$twocomponent.x
                 exportparams$verbose <- modelparams$verbose
                 exportparams$force4par <- modelparams$force4par
+                exportparams$force.nonmonotonic <- modelparams$force.nonmonotonic
                 skel <- rep(list(1), 16)
                 exportparamsbounds <- c(Amin, Amax, Kmin, Kmax, 
                   Imin, Imax, Mmin, Mmax, RAmin, RAmax, Rkmin, 
@@ -1375,9 +1390,9 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   "Rimax", "RMmin", "RMmax")
     		valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
             		unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
-       		names( valexp[1:31] ) <- names( c(exportparams[1:15],exportparamsbounds) )
-        	valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
-        	valexp[14:15] <- as.logical( valexp[14:15] )
+       		names( valexp[1:32] ) <- names( c(exportparams[1:16],exportparamsbounds) )
+        	valexp[c(1:12,17:32)] <- as.numeric( valexp[c(1:12,17:32)] )
+        	valexp[14:16] <- as.logical( valexp[14:16] )
         	if(is.numeric(modelparams$twocomponent.x)) {
         	valexp[13] <- as.numeric( valexp[13] )
         	} else {
@@ -1385,7 +1400,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         	}
   		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
  		assign(optvarnm, valexp, envir = Envir )
- 		pnmodelparams<-valexp[1:15]
+ 		pnmodelparams<-valexp[1:16]
  	      }
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             if (Kmin < 1e-05 & Kmin >= 0 ) {
@@ -1697,30 +1712,30 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             RM <- val2[4]
             counterR <- 0
             try(if(RAsym > RAmax & modno != 18 & modno != 19 ) {
-            if(pntbndserr == TRUE) stop("Upper bounds for RAsym are too low: RAsym > RAmax. If you wish bounds to be reestimated
+            if(pntbndserr == TRUE) stop("Upper bounds for RAsym are too low: optimized RAsym > RAmax. If you wish bounds to be reestimated
           	automatically, specify bounds.error = FALSE in modpar")         
-            cat("WARNING: Upper bounds for RAsym are too low: RAsym > RAmax. These will be adjusted. Alternatively
+            cat("WARNING: Upper bounds for RAsym are too low: optimized RAsym > RAmax. These will be adjusted. Alternatively
             	try runing modpar with option width.bounds set to more than 1 \n")
             RAmax <- as.numeric(RAsym + (RAsym * largemult))
             		}, silent = TRUE)
             try(if(RAsym < RAmin & modno != 18 & modno != 19) {
-            if(pntbndserr == TRUE) stop("Lower bounds for RAsym are too high:  RAsym < RAmin. If you wish bounds to be reestimated
+            if(pntbndserr == TRUE) stop("Lower bounds for RAsym are too high: optimized RAsym < RAmin. If you wish bounds to be reestimated
           	automatically, specify bounds.error = FALSE in modpar")         
-            cat("WARNING: Lower bounds for RAsym are too high: RAsym < RAmin. These will be adjusted. Alternatively
+            cat("WARNING: Lower bounds for RAsym are too high: optimized RAsym < RAmin. These will be adjusted. Alternatively
             	try runing modpar with option width.bounds set to more than 1 \n")
             RAmin <- as.numeric(RAsym + (RAsym * -largemult))
             		}, silent = TRUE)
             try(if(Ri > Rimax & modno != 18 & modno != 19) {
-            if(pntbndserr == TRUE) stop("Upper bounds for RAsym are too low:  Ri  > Rimax. If you wish bounds to be reestimated
+            if(pntbndserr == TRUE) stop("Upper bounds for RAsym are too low: optimized Ri  > Rimax. If you wish bounds to be reestimated
            	automatically, specify bounds.error = FALSE in modpar")         
-            cat("WARNING: Upper bounds for Ri are too low: Ri  > Rimax. These will be adjusted. Alternatively
+            cat("WARNING: Upper bounds for Ri are too low: optimized Ri  > Rimax. These will be adjusted. Alternatively
             	try runing modpar with option width.bounds set to more than 1 \n")
             Rimax <- as.numeric(Ri + (Ri * largemult))
             		}, silent = TRUE)
             try(if(Ri < Rimin & modno != 18 & modno != 19) {
-            if(pntbndserr == TRUE) stop("Lower bounds for RAsym are too high:  Ri < Rimin. If you wish bounds to be reestimated
+            if(pntbndserr == TRUE) stop("Lower bounds for RAsym are too high: optimized Ri < Rimin. If you wish bounds to be reestimated
            	automatically, specify bounds.error = FALSE in modpar")         
-            cat("WARNING: Lower bounds for Ri are too high: Ri < Rimin. These will be adjusted. Alternatively
+            cat("WARNING: Lower bounds for Ri are too high: optimized Ri < Rimin. These will be adjusted. Alternatively
             	try runing modpar with option width.bounds set to more than 1 \n")
             Rimin <- as.numeric(Ri + (Ri * -largemult))
         		}, silent = TRUE)
@@ -1758,20 +1773,21 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                RMmin = Mmin
                if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                }
-                skel <- rep(list(1), 15)
+                skel <- rep(list(1), 16)
                 exportparams <- c(Asym, K, Infl, M, RAsym, Rk, 
                   Ri, RM, modelparams$first.y, modelparams$x.at.first.y, 
                   modelparams$last.y, 
                   modelparams$x.at.last.y, modelparams$twocomponent.x, 
-                  modelparams$verbose, modelparams$force4par)
+                  modelparams$verbose, modelparams$force4par,modelparams$force.nonmonotonic)
                 exportparams <- relist(exportparams, skel)
                 names(exportparams) <- c("Asym", "K", "Infl", 
                   "M", "RAsym", "Rk", "Ri", "RM", "first.y", "x.at.first.y",
                   "last.y", "x.at.last.y", "twocomponent.x", 
-                  "verbose", "force4par")
+                  "verbose", "force4par", "force.nonmonotonic")
                 exportparams$twocomponent.x <- modelparams$twocomponent.x
                 exportparams$verbose <- modelparams$verbose
                 exportparams$force4par <- modelparams$force4par
+                exportparams$force.nonmonotonic <- modelparams$force.nonmonotonic
                 skel <- rep(list(1), 16)
                 exportparamsbounds <- c(Amin, Amax, Kmin, Kmax, 
                   Imin, Imax, Mmin, Mmax, RAmin, RAmax, Rkmin, 
@@ -1784,9 +1800,9 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                   "Rimax", "RMmin", "RMmax")
      		valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
              		unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
-        		names( valexp[1:31] ) <- names( c(exportparams[1:15],exportparamsbounds) )
-        	valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
-        	valexp[14:15] <- as.logical( valexp[14:15] )
+        		names( valexp[1:32] ) <- names( c(exportparams[1:16],exportparamsbounds) )
+        	valexp[c(1:12,17:32)] <- as.numeric( valexp[c(1:12,17:32)] )
+        	valexp[14:16] <- as.logical( valexp[14:16] )
         	if(is.numeric(modelparams$twocomponent.x)) {
         	valexp[13] <- as.numeric( valexp[13] )
         	} else {
@@ -1794,7 +1810,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         	}
       		try(valexp$taper.ends <- as.numeric(valexp$taper.ends), silent = TRUE)
     		assign(optvarnm, valexp, envir = Envir )
-    		pnmodelparams<-valexp[1:15]
+    		pnmodelparams<-valexp[1:16]
 		modelparams <- exportparams
                 modelparamsbounds <- exportparamsbounds
                 FPCEnv$.tmpposnegfile <- 0
@@ -2677,7 +2693,8 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             }
         }
     }
-    if (modelparams$force4par == TRUE) {
+    if (modelparams$force4par == TRUE | (modelparams$force.nonmonotonic == FALSE & modno == 12) |
+            (modelparams$force.nonmonotonic == FALSE & modno == 32) ){
     	 if (modno != 20 & modno != 32) {
                    if (modno < 17 | modno >= 18) {
                          value <- value[1:4]
@@ -2839,19 +2856,20 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             RMmax <- NA
             RMmin <- NA
         }
-        skel <- rep(list(1), 15)
+        skel <- rep(list(1), 16)
         exportparams <- c(Asym, K, Infl, M, RAsym, Rk, Ri, RM, 
             modelparams$first.y, modelparams$x.at.first.y, 
             modelparams$last.y, modelparams$x.at.last.y, 
             modelparams$twocomponent.x, modelparams$verbose, 
-            modelparams$force4par)
+            modelparams$force4par, modelparams$force.nonmonotonic)
         exportparams <- relist(exportparams, skel)
         names(exportparams) <- c("Asym", "K", "Infl", "M", "RAsym", 
             "Rk", "Ri", "RM", "first.y", "x.at.first.y", "last.y", "x.at.last.y", 
-            "twocomponent.x", "verbose", "force4par")
+            "twocomponent.x", "verbose", "force4par", "force.nonmonotonic")
         exportparams$twocomponent.x <- modelparams$twocomponent.x
         exportparams$verbose <- modelparams$verbose
         exportparams$force4par <- modelparams$force4par
+        exportparams$force.nonmonotonic <- modelparams$force.nonmonotonic
         skel <- rep(list(1), 16)
         exportparamsbounds <- c(Amin, Amax, Kmin, Kmax, Imin, 
             Imax, Mmin, Mmax, RAmin, RAmax, Rkmin, Rkmax, Rimin, 
@@ -2863,9 +2881,9 @@ SSposnegRichards <- structure(function(x, Asym = NA,
             "RMmax")
      	valexp <- sapply( c(unlist(exportparams),unlist(exportparamsbounds), 
              	unlist( optvar[names(optvar) %w/o% c(names(exportparams),names(exportparamsbounds)) ]) ), function(x) list(x))
-        	names( valexp[1:31] ) <- names( c(exportparams[1:15],exportparamsbounds) )
-      	valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
-        	valexp[14:15] <- as.logical( valexp[14:15] )
+        	names( valexp[1:32] ) <- names( c(exportparams[1:16],exportparamsbounds) )
+      	valexp[c(1:12,17:32)] <- as.numeric( valexp[c(1:12,17:32)] )
+        	valexp[14:16] <- as.logical( valexp[14:16] )
         	if(is.numeric(modelparams$twocomponent.x)) {
         	valexp[13] <- as.numeric( valexp[13] )
         	} else {

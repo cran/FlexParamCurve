@@ -62,6 +62,7 @@
 }
 \examples{
 require(stats); require(graphics)
+#view data
 penguin.data
 modpar(penguin.data$ckage, penguin.data$weight, pn.options = "myoptions")
 plot(weight ~ ckage, data = penguin.data, subset = bandid == penguin.data$bandid[1],

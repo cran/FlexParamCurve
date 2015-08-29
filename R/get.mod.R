@@ -20,22 +20,22 @@ structure(function # Copy objects between R environments
     ##
 if(length(modelname)<1){
 }else{
+cat("target environment: ")
+print(to.envir)
 if(length(modelname)>1 | write.mod == TRUE){
-  cat("objects successfully transfered to environment: ") 
-  print(to.envir)
   for(i in 1:length(modelname)){
     if(exists(modelname[i] ,envir=from.envir) == F) {
 	cat (paste("Object ", modelname[i], " not found in specified environment.
 	Note: object name argument should be a character or character vector",sep="\""))
     }else{	
    assign(modelname[i], get(modelname[i],envir = from.envir), envir= to.envir)
-   cat(modelname[i], fill=T, labels= as.character(i) )
-    }
-			       }
+   cat( paste(modelname[i],"successfully transfered to this environment", sep = " ")
+   , fill=T, labels= as.character(i) )
+    }			       }
  }else{
 if(exists(modelname[1] ,envir=from.envir) == F) stop ("Object not found in specified environment.
    Note: object name argument should be a character or character vector")
-cat(paste("value returned for ",modelname, ":",sep="\""))
+cat(paste("value returned for ",modelname, ":\n ",sep="\""))
 return(get(modelname[1] ,envir=from.envir))
  }
 }    
@@ -50,16 +50,19 @@ return(get(modelname[1] ,envir=from.envir))
 , ex = function(){
    #transfer all \eqn{nlsList} models from the FlexParamCurve working environmment (FPCEnv) 
    #to the Global Environment. Note: unless \code{\link{pn.mod.compare}} or 
-   #\code{\link{pn.modselect.step}} have been
+   #\code{\link{pn.modselect.step}} have been run, in which case this is default
    #1. subset data object (only 3 individuals) to expediate model selection
    subdata <- subset(posneg.data, as.numeric(row.names (posneg.data) ) < 40)
-   #2. run model selection using \code{\link{pn.mod.compare}}
+   #2. run model selection in FPCEnv using \code{\link{pn.mod.compare}}. Only two models (#1 and #5)
+   #specified to be run here to reduce processing time. see \code{\link{pn.mod.compare}}
    modseltable <- pn.mod.compare(subdata$age, subdata$mass,
-      subdata$id, existing = FALSE, pn.options = "myoptions")
+      subdata$id, existing = FALSE, pn.options = "myoptions", mod.subset = c(1,5))
    #3. retrieve models from FlexParamCurve working environmment
    get.mod()
    #transfer an options file called myoptions from FPCEnv to the Global Environment
-   modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions")
-   get.mod(modelname = "myoptions", write.mod = TRUE)
+   #note data are forced to fit a monotonic curve in this example
+   modpar(logist.data$age, logist.data$mass, pn.options = "myoptions.1", force4par = TRUE, 
+   Envir = FlexParamCurve:::FPCEnv)
+   get.mod(modelname = "myoptions.1", write.mod = TRUE)
 }
 )

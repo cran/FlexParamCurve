@@ -23,6 +23,7 @@ taper.ends = 0.45,
 width.bounds = 1,
 bounds.error = FALSE,
 Envir = .GlobalEnv,
+force.nonmonotonic = FALSE,
 ...)
 }
 \arguments{
@@ -54,6 +55,9 @@ parameter values.}
  \item{bounds.error}{a logical. If true parameter estimation will terminate if initial estimation of parameters leads to
 values outside specified bounds in pn.options. If false, more appropriate bounds will be determined automatically.}
  \item{Envir}{a valid R environment to find pn.options in and export any output to, by default this is the global environment} 
+ \item{force.nonmonotonic}{if set to TRUE fixed recessional parameter estimates will be used for the two monotonic equations
+ (modno #12 or #32), otherwise these two models will use RAsym = 0, Ri = 0, Rk = 1, RM = 1 to prevent non-monotonic relationships
+ in these cases.} 
  \item{...}{additional optional arguments to be passed to nlsList}
 
 }
@@ -103,7 +107,12 @@ or \code{\link{posnegRichards.eqn}}.
 
 Use force4par = TRUE if you desire to produces estimates only for the four parameters of
 a single Richards curves. This should also be used if you wish to fit simple logistic
-Gompertz or von Bertalanffy curves: see \code{\link{SSposnegRichards}} for more details.
+Gompertz or von Bertalanffy curves: see \code{\link{SSposnegRichards}} for more details. If 
+the specified model in subsequent eqn{SSposnegRichards}, model selection or ploting calls
+is monotonic (i.e. contains no recession parameters: modno= 12 or 32) recessional parameters
+will not be included for these two models unless "force.nonmonotonic" option is TRUE,
+in the specified pn.options list object, in which case parameters will be drawn from the specified 
+pn.options list object.
 
 When specified, first.y and last.y are saved in list object specified by \code{pn.options} to instruct
 \code{\link{SSposnegRichards}} to add this as the first or last value of the response, respectively,

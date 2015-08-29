@@ -66,6 +66,7 @@
 }
 \examples{
 require(stats); require(graphics)
+#view data
 tern.data
 #create pnmodelparams for fixed parameters
 modpar(tern.data$ckage, tern.data$weight, force4par = TRUE, pn.options = "myoptions")

@@ -16,11 +16,23 @@ structure(function
                      width.bounds = 1,
                      bounds.error = FALSE,
                      Envir =  .GlobalEnv,
+                     force.nonmonotonic = FALSE,
                      ...
                      ) {
     if(!is.na(pn.options)) {
     if(is.character(pn.options) == FALSE) stop("character variable name required for pn.options") 
     			}
+    ckfmtnum <- list(first.y[1], x.at.first.y[1], last.y[1], x.at.last.y[1])
+    names(ckfmtnum) <- c("first.y", "x.at.first.y", "last.y", "x.at.last.y")
+    fun1<-function(x){!is.na(x)}
+    ts<-lapply(ckfmtnum,fun1)
+    ckfmtnum <- ckfmtnum[unlist(ts)]
+    if( length(ckfmtnum) > 0 ) {
+    fun2<-function(x){!is.numeric(x)}
+    tstfmtnum <- lapply(ckfmtnum,fun2)
+    ckfmtnum <- ckfmtnum[unlist(tstfmtnum)]
+    stop(paste("argument ", names(ckfmtnum[1]), " is not a number", sep ="") )
+    }  
     options(warn = -1)
     if(exists("Envir", mode= "environment") == FALSE) stop("Envir must be a
     valid R environment (e.g. not a charater variable")
@@ -62,21 +74,22 @@ structure(function
     detl <- TRUE
     if(verbose == TRUE) detl <- FALSE
     xy <- sortedXyData(x,y)
-    skel <- rep(list(1), 15)
-    initval <- c(rep(NA, 15))
+    skel <- rep(list(1), 16)
+    initval <- c(rep(NA, 16))
     initval <- relist(initval, skel)
     names(initval) <- c("Asym", "K", "Infl", "M", "RAsym", "Rk",
         "Ri", "RM", "first.y", "x.at.first.y", "last.y", "x.at.last.y",
-        "twocomponent.x","verbose","force4par")
-    initval$first.y <- first.y
-    initval$x.at.first.y <- x.at.first.y
-    initval$last.y <- last.y
-    initval$x.at.last.y <- x.at.last.y
+        "twocomponent.x","verbose","force4par", "force.nonmonotonic")
+    initval$first.y <- first.y[1]
+    initval$x.at.first.y <- x.at.first.y[1]
+    initval$last.y <- last.y[1]
+    initval$x.at.last.y <- x.at.last.y[1]
     initval$twocomponent.x <- twocomponent.x
     if(width.bounds != 1) initval$width.bounds <- width.bounds
     if(bounds.error == TRUE) initval$bounds.error <- bounds.error
     initval$verbose <- verbose
     initval$force4par <- force4par
+    initval$force.nonmonotonic <- force.nonmonotonic
     initval$taper.ends <- taper.ends
     skel1 <- rep(list(1), 16)
     initval1 <- c(rep(NA, 16))
@@ -86,11 +99,11 @@ structure(function
         "Rimin", "Rimax", "RMmin", "RMmax")
     formtassign <- function (x,y,type=0) {
     	options(warn=-1)
-    	valexp <- sapply( c( unlist(x[1:15]),unlist(y) ) 
+    	valexp <- sapply( c( unlist(x[1:16]),unlist(y) ) 
    		 , function(x) list(x))
-    	names( valexp[1:31] ) <- names( c(x[1:15],y) )
-    	valexp[c(1:12,14:31)] <- as.numeric( valexp[c(1:12,14:31)] )
-    	valexp[14:15] <- as.logical( valexp[14:15] )
+    	names( valexp[1:32] ) <- names( c(x[1:16],y) )
+    	valexp[c(1:12,17:32)] <- as.numeric( valexp[c(1:12,17:32)] )
+    	valexp[14:16] <- as.logical( valexp[14:16] )
     	if(is.numeric(x$twocomponent.x)) {
 	        valexp[13] <- as.numeric( valexp[13] )
 	    } else {
@@ -98,19 +111,19 @@ structure(function
    	}
    	if(type == 1) {
    		if(names( x[length(x)]) == "taper.ends") {
-   		valexp[16] <- x$taper.ends
-   		names(valexp[16]) <-"taper.ends"
-   		return(valexp[1:16])
+   		valexp[17] <- x$taper.ends
+   		names(valexp[17]) <-"taper.ends"
+   		return(valexp[1:17])
    		}else{
-    		return(valexp[1:15])
+    		return(valexp[1:16])
     		}
     	} else {
     		if(type == 2) {
     			  if(names( x[length(x)]) == "taper.ends") {
 			  valexp$taper.ends <- x$taper.ends
-			  return(valexp[16:32])
+			  return(valexp[17:33])
 			   }else{
-			  return(valexp[16:31])
+			  return(valexp[17:32])
     			  }
     		}  else {
     			 if(names( x[length(x)]) == "taper.ends")
@@ -216,7 +229,7 @@ structure(function
             bndsvals<-get(pnoptnm, envir = Envir) 
             initval[1:8] <- value
             initval[13]<-bndsvals[13]
-            bndsvals<-bndsvals [16:31]
+            bndsvals<-bndsvals [17:32]
             bndsvals[9:16]<-bndsvals[1:8]
             valexp <- formtassign( initval , bndsvals)				  
 	    assign(pnoptnm, valexp, envir = Envir)

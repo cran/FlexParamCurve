@@ -133,7 +133,7 @@ parameter estimates, fitting options and bounds}
      modno 17.1:
      modno 17.2:
      modno 17.3:
-     are designed for use in modeling migration, \eqn{sensu.} Bunnefeld et al. 2011, Singh et al. In press.
+     are designed for use in modeling migration, \eqn{sensu.} Bunnefeld et al. 2011, Singh et al. 2012.
     
      modnos 18, 19 and 20 are reserved for internal use by \code{\link{modpar}}.
     
@@ -210,8 +210,8 @@ parameter estimates, fitting options and bounds}
      are not return but are substituted in calls to \code{\link{nls}}
      \code{\link{nlsList}} and \code{\link{nlme}} with the fixed parameters
      stored in \code{pnmodelparams}; see \code{\link{modpar}}}
-\references{## Oswald, S.A. et al. (Early view) FlexParamCurve: R package for flexible
-     fitting of nonlinear parametric curves. Methods in Ecology and Evolution.
+\references{## Oswald, S.A. et al. (2012) FlexParamCurve: R package for flexible
+     fitting of nonlinear parametric curves. Methods in Ecology and Evolution 3: 1073-1077.
  \preformatted{
      doi: 10.1111/j.2041-210X.2012.00231.x 
      (see also tutorial and introductory videos at:
@@ -241,8 +241,8 @@ parameter estimates, fitting options and bounds}
      Bunnefeld et al. (2011) A model-driven approach to quantify migration patterns:
      individual, regional and yearly differences. Journal of Animal Ecology 80: 466-476.
      	 #8#
-     Singh et al. (In press) From migration to nomadism: movement variability in a northern
-     ungulate across its latitudinal range. Ecological Applications.}
+     Singh et al. (2012) From migration to nomadism: movement variability in a northern
+     ungulate across its latitudinal range. Ecological Applications 22: 2007-2020.}
 \author{Stephen Oswald <steve.oswald@psu.edu>}
 \note{Any models that require parameter fixing (i.e. all except #1)
      extract appropriate values from the object \code{pnmodelparams} for the fixed

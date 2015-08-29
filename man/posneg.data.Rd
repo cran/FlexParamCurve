@@ -53,6 +53,7 @@
 }
 \examples{
 require(stats); require(graphics)
+#view data
 posneg.data
 #create list for fixed parameters
 modpar(posneg.data$age, posneg.data$mass, pn.options = "myoptions")

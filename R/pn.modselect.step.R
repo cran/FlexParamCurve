@@ -132,8 +132,8 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    chk1 <- try(unlist(summary(richardsR20.lis))["RSE"], silent = TRUE)     
 	    if ((class(richardsR20.lis)[1]) == "try-error" | class(richardsR20.lis)[[1]] != "nlsList" 
 	    	| class(chk1)[1] == "try-error") {
-		print("3 parameter positive richards model failed*************************************")
-		forcemod = 4
+	        print("3 parameter positive richards model failed/not fitted*************************************")
+                if(forcemod != 3) forcemod = 4
 		richardsR20.lis <- 1
 		} else {
 		FPCEnv$richardsR20.lis <- richardsR20.lis
@@ -141,16 +141,16 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    if ((class(richardsR12.lis)[1]) == "try-error" | class(richardsR12.lis)[[1]] != "nlsList" 
 	    	| class(chk)[1] == "try-error")
 		{
-		    print("4 parameter positive richards model failed*************************************")
-		    forcemod = 3
+                print("4 parameter positive richards model failed/not fitted*************************************")
+                if(forcemod != 4)  forcemod = 3
 		    richardsR12.lis <- 1
 		} else {
 		FPCEnv$richardsR12.lis <- richardsR12.lis
 					}
 	    currentmodel <- 1
+	    testmod <- try(extraF(richardsR20.lis, richardsR12.lis, warn = F))
 	    if (forcemod == 0) {
-		testmod <- try(extraF(richardsR20.lis, richardsR12.lis, warn = F))
-		if (class(testmod) == "try-error") {
+				if (class(testmod) == "try-error") {
 		    modelsig = 0.1
 		} else {
 		    modelsig = testmod[4]
@@ -165,7 +165,14 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    }
 		}
 	    }
-	    mostreducedmod <- currentmodel
+            mostreducedmod <- currentmodel
+            if (class(testmod) != "try-error") {
+            mostreducednm <- substr("richardsR20.lis", 10,
+                  11)
+            mostreducedmod <- richardsR20.lis
+            } else {
+            mostreducednm <- "NONE"
+            }
 	    if (forcemod == 3)
 		{
 		    modelsig = 0.1

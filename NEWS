@@ -1,5 +1,36 @@
 R News
 
+CHANGES IN FlexParamCurve 1.5-3:
+
+(note FlexParamCurve 1.5-2 was not generally circulated thus changes detailed
+ are additions since 1.5-1)
+
+    * Change in default approach to fitting monotonic curves
+
+      Monotonic curves are exemplified by the logistic and Richards curve, and do not
+      incorporate a recessional part of the curve. In previous versions, FlexParamCurve
+      fixed recessional parameters to the values in the specified pn.options object (see
+      ?modpar). However, if data used in modpar supported recessional parameters non-
+      intuitive recessional plots were generated using monotonic curve models (modno 12 
+      or 32). The new approach implemented in v1.5-3 is to by default ignore recessional
+      parameters whenever modno 12 or 32 are optimized or plotted. To access the original 
+      approach (for those who wish to optimize pre-recession parameters only but retain 
+      fixed recession trajectories) set force.nonmonotonic = TRUE in modpar.
+      
+      
+    * Update of model selection routines (pn.mod.compare and pn.modselect.step) 
+      
+      The new default for pn.mod.compare is to proceed using variable models (those 
+      with a shape parameter, M, for the pre-recessional part of the curve) for subsequent
+      model selection if neither of the initial models successfully converge. User preferences
+      can be selected using either forcemod = 3 or forcemod = 4; see ?pn.mod.compare. In both
+      selection routines the code has been adjusted to make forcemod work appropriately.
+      
+    * Implementation of required package dependencies 
+    
+      The new dependency information required by CRAN has been incorporated.
+
+
 CHANGES IN FlexParamCurve 1.5-1:
 
 
