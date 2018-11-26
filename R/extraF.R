@@ -28,11 +28,11 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
     env1ck <- try(is.environment(FPCEnv$env),silent=T)
     envck <- try(is.environment(Envir),silent=T)
     env.ck<-2
-    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
-    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(envck == FALSE | class(envck)[1] == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck)[1] == "try-error") env.ck <- (env.ck - 1)
     if(env.ck == 2){
     	if(identical(Envir,Envir1) == F) Envir <- Envir1}
-    if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    if(env.ck == 1 & (envck == FALSE | class(envck)[1] == "try-error")) Envir <- Envir1
     FPCEnv$env <- Envir
     FPCEnv$legitmodel <- "legitmodelreset"
     chk <- try(unlist(summary(submodel))["RSE"], silent = TRUE)

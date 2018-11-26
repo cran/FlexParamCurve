@@ -1,11 +1,11 @@
 posnegRichardsInit <-
-function(mCall, LHS, data, ...) {
+  function(mCall, LHS, data, ...) {
     Envir1 <- try(FPCEnv$env,silent=T)
     env1ck <- try(is.environment(FPCEnv$env),silent=T)
     envck <- try(is.environment(Envir),silent=T)
     env.ck<-2
-    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
-    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(envck == FALSE | class(envck)[1] == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck)[1] == "try-error") env.ck <- (env.ck - 1)
     if(env.ck == 2) {
     modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
      if(class(modselck)[1] != "try-error" & modselck == TRUE) {
@@ -15,7 +15,7 @@ function(mCall, LHS, data, ...) {
     	}
     	}
     }
-    if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    if(env.ck == 1 & (envck == FALSE | class(envck)[1] == "try-error")) Envir <- Envir1
     if(exists("Envir") == F) stop("Environment not previously specified - argument not
     successfully transfered: run modpar or manually assign Envir value to FPCEnv$env \n
     e.g. assign('env', FlexParamCurve:::FPCEnv, envir = FlexParamCurve:::FPCEnv")  
@@ -63,7 +63,7 @@ function(mCall, LHS, data, ...) {
 	    unmatchbounds <- (names(boundsprovided) %w/o% matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
 		"twocomponent.x","verbose","force4par")
 	    .paramsestimated <- try( FPCEnv$.paramsestimated ,silent = TRUE)
-	    if( class(.paramsestimated) == "try-error" ) .paramsestimated <- TRUE
+	    if( class(.paramsestimated)[1] == "try-error" ) .paramsestimated <- TRUE
 	    if(length(unmatchbounds) > 0 & .paramsestimated == TRUE ) {
 	    print("WARNING: In pn.options:  Some parameters specified are missing min/max bounds. Running modpar to populate these bounds.")
 	    print("Note: this will also populate any parameters appropriate to the specified modno that are also missing")
@@ -105,7 +105,7 @@ function(mCall, LHS, data, ...) {
     if (!"K" %in% names(invars) & modno != 17) stop(paste("Parameter K required for modno = ", modno, " but is absent from user-provided call", sep = ""))
     if (modno <= 19) {
     	if (!"M" %in% names(invars)) stop(paste("Parameter M required for modno = ", modno, " but is absent from user-provided call", sep = ""))
-    	if (.paramsestimated != FALSE & !"M" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+    	if (.paramsestimated[1] != FALSE & !"M" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
     		stop(paste("Parameter M required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }
     if (modno != 2 & modno != 22 & modno != 10 & modno != 30 & 
@@ -114,7 +114,7 @@ function(mCall, LHS, data, ...) {
         modno != 34 & modno != 15 & modno != 35 & modno != 16 & 
         modno != 36 & modno != 20 & modno != 32) {        
         if (!"RM" %in% names(invars)) stop(paste("Parameter RM required for modno = ", modno, " but is absent from user-provided call", sep = ""))
-   	if (.paramsestimated != FALSE & !"RM" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+   	if (.paramsestimated[1] != FALSE & !"RM" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
     		stop(paste("Parameter RM required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }
     if (modno != 3 & modno != 23 & modno != 5 & modno != 25 & 
@@ -123,7 +123,7 @@ function(mCall, LHS, data, ...) {
         modno != 19 & modno != 14 & modno != 34 & modno != 16 & 
         modno != 36 & modno != 20 & modno != 32) {
         if (!"RAsym" %in% names(invars)) stop(paste("Parameter RAsym required for modno = ", modno, " but is absent from user-provided call", sep = ""))
-   	if (.paramsestimated != FALSE & !"RAsym" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+   	if (.paramsestimated[1] != FALSE & !"RAsym" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
     		stop(paste("Parameter RAsym required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }
     if (modno != 3 & modno != 23 & modno != 4 & modno != 24 & 
@@ -132,7 +132,7 @@ function(mCall, LHS, data, ...) {
         modno != 12 & modno != 32 & modno != 19 & modno != 13 & 
         modno != 33 & modno != 20 & modno != 32) {
         if (!"Rk" %in% names(invars)) stop(paste("Parameter Rk required for modno = ", modno, " but is absent from user-provided call", sep = ""))
-	if (.paramsestimated != FALSE & !"Rk" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+	if (.paramsestimated[1] != FALSE & !"Rk" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
     		stop(paste("Parameter Rk required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }
     if (modno != 4 & modno != 24 & modno != 5 & modno != 25 & 
@@ -141,7 +141,7 @@ function(mCall, LHS, data, ...) {
         modno != 19 & modno != 15 & modno != 35 & modno != 16 & 
         modno != 36 & modno != 20 & modno != 32) {
         if (!"Ri" %in% names(invars)) stop(paste("Parameter Ri required for modno = ", modno, " but is absent from user-provided call", sep = ""))
-	if (.paramsestimated != FALSE & !"Ri" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
+	if (.paramsestimated[1] != FALSE & !"Ri" %in% names( pnmodelparams[which(!is.na(pnmodelparams))] )) 
     		stop(paste("Parameter Ri required for modno = ", modno, " but is absent from pn.options list in user-provided call", sep = ""))
     }    
     }
@@ -700,7 +700,7 @@ function(mCall, LHS, data, ...) {
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05) 
                 Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+            if(class(kcheck)[1] == "try-error") stop ("Optimized parameters incompatable, aborting fit")
                 if (Kmin > (-1e-05)) 
                 Kmin = (-1e-05)
             if (modno == 17) {
@@ -761,7 +761,7 @@ function(mCall, LHS, data, ...) {
             Kmin = K - (abs(K) * 0.25)
  	    kcheck <- try({if (Kmin < 1e-05) 
                 Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+            if(class(kcheck)[1] == "try-error") stop ("Optimized parameters incompatable, aborting fit")
             if (Kmin > (-1e-05)) 
                 Kmin = (-1e-05)
             Imax = Imax - (abs(Imax - Infl) * 0.75)
@@ -860,7 +860,7 @@ function(mCall, LHS, data, ...) {
                     0.9
                   maxIval<- try(max(xyE$x, na.rm = TRUE) - 
                   	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
-       		  if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE) 
+       		  if(class(maxIval)[1] == "try-error") maxIval <- max(xy$x, na.rm=TRUE) 
        		  if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
                   if (abs(M) < 0.1) {
                     Mmax = 0.5
@@ -895,7 +895,7 @@ function(mCall, LHS, data, ...) {
  		  names(RMmin) <- ("RMmin")
                   maxRival<- try(max(xyL$x, na.rm = TRUE) - 
                   	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
-                  if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+                  if(class(maxRival)[1] == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
 		  if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 } else {
                   names(testpar) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
@@ -922,7 +922,7 @@ function(mCall, LHS, data, ...) {
        		
                   maxRival<- try(max(xyL$x, na.rm = TRUE) - 
 		      (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
-		  if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+		  if(class(maxRival)[1] == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
                   if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
                   if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 }
@@ -960,7 +960,7 @@ function(mCall, LHS, data, ...) {
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05 & Kmin > -1e-05) 
                			 Kmin = 1e-05 * sign(Kmin)},silent = TRUE)
-	    if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+	    if(class(kcheck)[1] == "try-error") stop ("Optimized parameters incompatable, aborting fit")
             savminx <- min(xyE$x)
             savmaxx <- max(xyE$x)
             try(oppar <- optim(c(Asym, K, Infl, M), func1, method = "L-BFGS-B", 
@@ -1048,7 +1048,7 @@ function(mCall, LHS, data, ...) {
             Kmin = K - (abs(K) * 0.25)
  	    kcheck <- try({if (Kmin < 1e-05) 
                 Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck) == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+            if(class(kcheck)[1] == "try-error") stop ("Optimized parameters incompatable, aborting fit")
             if (Kmin > (-1e-05)) 
             Kmin = (-1e-05)
             Imax = Infl + (abs(Infl) * 5)
@@ -1088,7 +1088,7 @@ function(mCall, LHS, data, ...) {
         xyL <- data.frame(rep(NA, 1))
         xyL <- subset(xy, xy$x >= Intage)
                 maxRival<- try(max(xyL$x, na.rm = TRUE) - (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
-  		if(class(maxRival) == "try-error") maxRival = max(xy$x, na.rm=TRUE)
+  		if(class(maxRival)[1] == "try-error") maxRival = max(xy$x, na.rm=TRUE)
         if (is.na(modelparams$twocomponent.x) == FALSE) 
             xyL <- subset(xy, xy$x > Intage)
         if (nrow(xyL) < 3 | modno == 12 | modno == 20 | modno == 
@@ -1299,7 +1299,7 @@ function(mCall, LHS, data, ...) {
                 modelparamsbounds <- exportparamsbounds
                 FPCEnv$.tmpposnegfile <- 0
             }
-            if (-modno == 1 | modno == 21 | modno == 18) {
+            if (modno == 1 | modno == 21 | modno == 18) {
                 inputval <- c(RAsym, Rk, Ri, RM)
                 inputmin <- c(RAmin, Rkmin, Rimin, RMmin)
                 inputmax <- c(RAmax, Rkmax, Rimax, RMmax)

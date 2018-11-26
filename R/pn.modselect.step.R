@@ -67,7 +67,18 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	## that contains the character n (sample size) and must be a valid right hand side (RHS) of a formula:
 	## e.g. 1*(n), (n)^2. It cannot contain more than one n but could be a custom function, e.g. FUN(n).
 	    pcklib<- FPCEnv
+	    if( anyNA(data.frame(x, y, grp)) == TRUE ) stop ("This function does not handle missing data values for x, y, or grp. Please subset the data, e.g. mydataframe[!is.na(mydataframe),], to remove them prior to function call")
 	    options( warn = -1)
+	    if(existing == FALSE) {
+	      rm(list = ls(pattern = "richardsR", envir=FPCEnv), envir=FPCEnv)
+	      rm(list = ls(pattern = "richardsR", envir=Envir), envir=Envir) 
+	    } else {
+	      rm(list = ls(pattern = "richardsR", envir=FPCEnv), envir=FPCEnv)
+	      get.mod(modelname = ls(Envir,pattern="richardsR"), from.envir = Envir, to.envir = FPCEnv, write.mod = TRUE, silent = TRUE)
+	      print("#########################################################################################################")
+	      print(paste("NOTE: existing is not set to false, existing models in the working environment ",substitute(Envir)," will be used during fits. To remove models manually, remove all files prefixed richardsR from working environment before running",sep=""))
+	      print("#########################################################################################################")
+	    }
 	    pnoptm=NULL
 	    pnoptnm <- as.character(pn.options)
 	    checkpen <- try(unlist(strsplit(penaliz, "(n)")), silent = TRUE)
@@ -150,7 +161,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    currentmodel <- 1
 	    testmod <- try(extraF(richardsR20.lis, richardsR12.lis, warn = F))
 	    if (forcemod == 0) {
-				if (class(testmod) == "try-error") {
+				if (class(testmod)[1] == "try-error") {
 		    modelsig = 0.1
 		} else {
 		    modelsig = testmod[4]
@@ -166,7 +177,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		}
 	    }
             mostreducedmod <- currentmodel
-            if (class(testmod) != "try-error") {
+            if (class(testmod)[1] != "try-error") {
             mostreducednm <- substr("richardsR20.lis", 10,
                   11)
             mostreducedmod <- richardsR20.lis
@@ -1830,8 +1841,9 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			  modnames[i - 1], "      |", sep = "")
 		    }
 		    options(warn = -1)
-		    assessfits <- try( eval(parse(paste("step",i, "stat", sep = ""))), silent = TRUE)
-		    if (class(assessfits)[1] == "try-error") countfit <- countfit + 1
+		    assessfits <- try( eval(parse(text = sprintf("%s", paste("step",
+		  i, "stat", sep = "")))),silent = TRUE)
+		    if (class(assessfits)[1] != "try-error") countfit <- countfit + 1
 		    if (i == 6 & countfit == 0) stop("No models were successfully fitted. Aborting..... Please check your data or change argument options.")
 		    currstat <- eval(parse(text = sprintf("%s", (paste("step",
 			i, "stat", sep = "")))))

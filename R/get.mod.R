@@ -6,8 +6,10 @@ structure(function # Copy objects between R environments
                     ### R environment currently containing the object(s)
                     to.envir=.GlobalEnv,
                     ### destination R environment to copy the object(s) to
-                    write.mod = FALSE
+                    write.mod = FALSE,
                     ### logical specifying if single models should be assigned or simply returned
+                    silent = FALSE
+		    ### logical specifying whether additional confirmation should be printed to the screen
                     ) {
     ##description<< Function to copy objects between R environments                
     ##details<< All arguments are optional. With defaults, this function copies any \eqn{nlsList} models
@@ -20,20 +22,24 @@ structure(function # Copy objects between R environments
     ##
 if(length(modelname)<1){
 }else{
-cat("target environment: ")
+if(silent == FALSE){cat("target environment: ")}
 print(to.envir)
 if(length(modelname)>1 | write.mod == TRUE){
   for(i in 1:length(modelname)){
-    if(exists(modelname[i] ,envir=from.envir) == F) {
+    if(exists(modelname[i] ,envir=from.envir) == FALSE) {
+	if(silent == FALSE){
 	cat (paste("Object ", modelname[i], " not found in specified environment.
 	Note: object name argument should be a character or character vector",sep="\""))
+        }
     }else{	
    assign(modelname[i], get(modelname[i],envir = from.envir), envir= to.envir)
-   cat( paste(modelname[i],"successfully transfered to this environment", sep = " ")
-   , fill=T, labels= as.character(i) )
+      if(silent == FALSE){
+      cat( paste(modelname[i],"successfully transfered to environment:",sep = " ")          
+      , fill=T, labels= as.character(i) )
+       print(to.envir)}
     }			       }
  }else{
-if(exists(modelname[1] ,envir=from.envir) == F) stop ("Object not found in specified environment.
+if(exists(modelname[1] ,envir=from.envir) == FALSE) stop ("Object not found in specified environment.
    Note: object name argument should be a character or character vector")
 cat(paste("value returned for ",modelname, ":\n ",sep="\""))
 return(get(modelname[1] ,envir=from.envir))

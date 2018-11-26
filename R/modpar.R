@@ -21,19 +21,20 @@ structure(function
                      ) {
     if(!is.na(pn.options)) {
     if(is.character(pn.options) == FALSE) stop("character variable name required for pn.options") 
-    			}
-    ckfmtnum <- list(first.y[1], x.at.first.y[1], last.y[1], x.at.last.y[1])
+    }
+		if( anyNA(data.frame(x, y)) == TRUE ) stop ("This function does not handle missing data values for x or y. Please subset the data, e.g. mydataframe[!is.na(mydataframe),], to remove them prior to function call")
+		ckfmtnum <- list(first.y[1], x.at.first.y[1], last.y[1], x.at.last.y[1])
     names(ckfmtnum) <- c("first.y", "x.at.first.y", "last.y", "x.at.last.y")
     fun1<-function(x){!is.na(x)}
     ts<-lapply(ckfmtnum,fun1)
     ckfmtnum <- ckfmtnum[unlist(ts)]
+    options(warn = -1)
     if( length(ckfmtnum) > 0 ) {
-    fun2<-function(x){!is.numeric(x)}
+    fun2<-function(x){is.numeric(unlist(x))}
     tstfmtnum <- lapply(ckfmtnum,fun2)
     ckfmtnum <- ckfmtnum[unlist(tstfmtnum)]
-    stop(paste("argument ", names(ckfmtnum[1]), " is not a number", sep ="") )
-    }  
-    options(warn = -1)
+    if( all(tstfmtnum) == FALSE) stop(paste("argument ", names(ckfmtnum[1]), " is not a number", sep ="") )
+    }
     if(exists("Envir", mode= "environment") == FALSE) stop("Envir must be a
     valid R environment (e.g. not a charater variable")
     savvalue<-NA
@@ -41,8 +42,8 @@ structure(function
     env1ck <- try(is.environment(FPCEnv$env),silent=T)
     envck <- try(is.environment(Envir),silent=T)
     env.ck<-2
-    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
-    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(envck == FALSE | class(envck)[1] == "try-error") env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | class(env1ck)[1] == "try-error") env.ck <- (env.ck - 1)
     if(env.ck == 2) {
     modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
     if(class(modselck)[1] != "try-error" & modselck == TRUE) {
@@ -52,7 +53,7 @@ structure(function
     	}
     	}
     }
-    if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+    if(env.ck == 1 & (envck == FALSE | class(envck)[1] == "try-error")) Envir <- Envir1
     FPCEnv$env <- Envir
     FPCEnv$.paramsestimated <- FALSE
     if(!is.na(pn.options)) {
@@ -191,7 +192,7 @@ structure(function
     	             silent = detl)
       savvalue<-value
        value <-NA
-      if(class(value[1]) == "try-error") stop ("Bounds unestimable")
+      if(class(value)[1] == "try-error") stop ("Bounds unestimable")
       savoptions <- get(pnoptnm, envir = Envir)
     prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
        value <- try(parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
@@ -225,7 +226,7 @@ structure(function
         value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
          	             K = K, Infl = Infl, M = M, modno = 19,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
          	             silent = detl)
-             if(class(value[1]) == "try-error") stop ("Bounds unestimable")
+             if(class(value)[1] == "try-error") stop ("Bounds unestimable")
             bndsvals<-get(pnoptnm, envir = Envir) 
             initval[1:8] <- value
             initval[13]<-bndsvals[13]
@@ -234,7 +235,7 @@ structure(function
             valexp <- formtassign( initval , bndsvals)				  
 	    assign(pnoptnm, valexp, envir = Envir)
             			} else {     
-      if(class(value[1]) == "try-error") stop ("Bounds unestimable")
+      if(class(value)[1] == "try-error") stop ("Bounds unestimable")
     savvalue<-value
       value <-NA
       savoptions <- get(pnoptnm, envir = Envir)    							}

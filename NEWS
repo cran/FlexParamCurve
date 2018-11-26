@@ -1,5 +1,23 @@
 R News
 
+CHANGES IN FlexParamCurve 1.5-5:
+(FlexParamCurve 1.5-4 was not generally circulated)
+
+   Updated to work on new R code requirements. 
+
+   Fixed 4 bugs from 1.5-3.
+                       1) verbose from modpar is now transitioning to n.mod.compare() and 
+			 pn.modselect.step()
+		       2) modpar(), pn.mod.compare() and  pn.modselect.step() will now throw
+                        an error if any data values (x, y or grp) are NA 
+                       3) in pn.mod.compare() and  pn.modselect.step(), existing = TRUE now works
+                        and will not fit any existing models within the working environment. These
+                        are transfered to the package environment, used, and transfered back
+		       4) optional constraints on either end of curve (first.y, x.at.first.y, last.y, 
+                         x.at.last.y) are now functioning
+
+ 
+
 CHANGES IN FlexParamCurve 1.5-3:
 
 (note FlexParamCurve 1.5-2 was not generally circulated thus changes detailed

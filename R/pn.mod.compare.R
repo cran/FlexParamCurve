@@ -51,7 +51,18 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
 ## standard error is multiplied by). This argument must be a character value
 ## that contains the character n (sample size) and must be a valid right hand side (RHS) of a formula:
 ## e.g. 1*(n), (n)^2. It cannot contain more than one n but could be a custom function, e.g. FUN(n).
+    if( anyNA(data.frame(x, y, grp)) == TRUE ) stop ("This function does not handle missing data values for x, y, or grp. Please subset the data, e.g. mydataframe[!is.na(mydataframe),], to remove them prior to function call")
     options(warn = -1)
+    if(existing == FALSE) {
+       rm(list = ls(pattern = "richardsR", envir=FPCEnv), envir=FPCEnv)
+       rm(list = ls(pattern = "richardsR", envir=Envir), envir=Envir) 
+    } else {
+      rm(list = ls(pattern = "richardsR", envir=FPCEnv), envir=FPCEnv)
+      get.mod(modelname = ls(Envir,pattern="richardsR"), from.envir = Envir, to.envir = FPCEnv, write.mod = TRUE, silent = TRUE)
+      print("#########################################################################################################")
+      print(paste("NOTE: existing is not set to false, existing models in the working environment ",substitute(Envir)," will be used during fits. To remove models manually, remove all files prefixed richardsR from working environment before running",sep=""))
+      print("#########################################################################################################")
+       }
     alacarte <- FALSE
     "%w/o%" <- function(x, y) x[!x %in% y] #--  x without y
     if(length(mod.subset %w/o% NA) > 0) {
@@ -143,7 +154,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
     currentmodel <- 1
     testmod <- try(extraF(richardsR20.lis, richardsR12.lis, warn = F), silent = TRUE)
     if (forcemod == 0) {
-        if (class(testmod) == "try-error") {
+        if (class(testmod)[1] == "try-error") {
             modelsig = 0.1
         } else {
             modelsig = testmod[4]
@@ -159,7 +170,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         }
     }
     mostreducedmod <- currentmodel
-    if (class(testmod) != "try-error") {
+    if (class(testmod)[1] != "try-error") {
     mostreducednm <- substr("richardsR20.lis", 10,
                   11)
     mostreducedmod <- richardsR20.lis
@@ -197,8 +208,8 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         }
         mod <- 1
         options(warn = -1)
-        modnmtry <- paste("FPCEnv$richardsR", modelno,".lis", sep = "") 
-        modexist <- try( eval(parse(modnmtry)), silent = TRUE)
+        modnmtry <- paste('FPCEnv$richardsR', modelno,'.lis', sep = "") 
+        modexist <- try( eval(parse(text=sprintf("%s", modnmtry))), silent = TRUE)
         options(warn = 0)
         if (class(modexist)[1] == "try-error" | existing == FALSE) {
         if ((modelno %in% mod.subset) == TRUE | alacarte == FALSE) { 
@@ -278,7 +289,8 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         }
         } else {
             options(warn = -1)
-            mod <- try(eval(parse(paste("FPCEnv$",savnm,sep=""))), silent = TRUE)
+            print("Model already exists in working environment")
+            mod <- try(eval(parse(text=sprintf("%s",paste("FPCEnv$",savnm,sep="")))), silent = TRUE)
             options(warn = 0)
         }
         if (class(mod)[[1]] != "nlsList")
@@ -292,9 +304,15 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
                 savnm, " has not been successfully fit, please trouble-shoot this model separately and then repeat function using existing=TRUE  *************************************************",
                 sep = ""))
         } else {
+          if(existing != FALSE & class(modexist)[1] != "try-error") {
+            messagesav <- (paste("**********************  Model ",
+                                 savnm, " exists and transferred successfully to the FlexParamCurve:::FPCEnv environment   *************************************************",
+                                 sep = ""))
+          } else {
             messagesav <- (paste("**********************  Model ",
                 savnm, " fit successfully and saved in FlexParamCurve:::FPCEnv environment   *************************************************",
                 sep = ""))
+            }
             assign(savnm, mod, envir = as.environment(FPCEnv))
             return(messagesav)
         }
