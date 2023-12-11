@@ -5,18 +5,18 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     env1ck <- try(is.environment(FPCEnv$env),silent=T)
     envck <- try(is.environment(Envir),silent=T)
     env.ck<-2
-    if(envck == FALSE | class(envck)[1] == "try-error") env.ck <- (env.ck - 1)
-    if(env1ck == FALSE | class(env1ck)[1] == "try-error") env.ck <- (env.ck - 1)
+    if(envck == FALSE | inherits((envck), "try-error")) env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | inherits((env1ck), "try-error")) env.ck <- (env.ck - 1)
     if(env.ck == 2) {
     modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
-   if(class(modselck)[1] != "try-error" & modselck == TRUE) {
+   if(!inherits((modselck), "try-error") & modselck == TRUE) {
      if(identical(Envir, Envir1) == FALSE & 
     	identical(Envir,.GlobalEnv) == TRUE){
     	Envir <- Envir1
     	}
     	}
     }
-    if(env.ck == 1 & (envck == FALSE | class(envck)[1] == "try-error")) Envir <- Envir1
+    if(env.ck == 1 & (envck == FALSE | inherits((envck), "try-error"))) Envir <- Envir1
     FPCEnv$env <- Envir
     pcall <- as.list((sys.call()))
     pnoptname <- as.character( pcall[["pn.options"]])
@@ -28,7 +28,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 	"Rimin", "Rimax", "RMmin", "RMmax") 
     try({
     parload <- try(get(pnoptname, envir = Envir), silent=T)
-    if(class(parload) == "try-error") 
+    if(inherits(parload, "try-error")) 
        stop("pn.options file not found in specified environment. Please check your call
        and the last call (if any) to modpar() to ensure they match")
     }, silent = TRUE)
@@ -119,18 +119,18 @@ SSposnegRichards <- structure(function(x, Asym = NA,
     env1ck <- try(is.environment(FPCEnv$env),silent=T)
     envck <- try(is.environment(Envir),silent=T)
     env.ck<-2
-    if(envck == FALSE | class(envck) == "try-error") env.ck <- (env.ck - 1)
-    if(env1ck == FALSE | class(env1ck) == "try-error") env.ck <- (env.ck - 1)
+    if(envck == FALSE | inherits((envck), "try-error")) env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | inherits((env1ck), "try-error")) env.ck <- (env.ck - 1)
      if(env.ck == 2) {
         modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
-       if(class(modselck)[1] != "try-error" & modselck == TRUE) {
+       if(!inherits((modselck), "try-error") & modselck == TRUE) {
          if(identical(Envir, Envir1) == FALSE & 
         	identical(Envir,.GlobalEnv) == TRUE){
         	Envir <- Envir1
         	}
         	}
     }
-     if(env.ck == 1 & (envck == FALSE | class(envck) == "try-error")) Envir <- Envir1
+     if(env.ck == 1 & (envck == FALSE | inherits(envck, "try-error"))) Envir <- Envir1
     if(exists("Envir") == F) stop("Environment not previously specified - argument not
     successfully transfered: \n run modpar or manually assign Envir value to FPCEnv$env
     e.g. assign('env', FlexParamCurve:::FPCEnv, envir = FlexParamCurve:::FPCEnv")
@@ -203,7 +203,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 	    	 matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
 		"twocomponent.x","verbose","force4par", "force.nonmonotonic", "RAmin","RAmax","Rkmin","Rkmax","Rimin","Rimax","RMmin","RMmax")
 	    .paramsestimated <- try( FPCEnv$.paramsestimated ,silent = TRUE)
-	    if( class(.paramsestimated) == "try-error" ) .paramsestimated <- TRUE
+	    if( inherits(.paramsestimated, "try-error" )) .paramsestimated <- TRUE
 	    if(modno != 18 & modno != 19 ){
 	    if(length(unmatchbounds) > 0 & .paramsestimated == TRUE ) {
 	    print("WARNING: In pn.options:  Some parameters specified are missing min/max bounds. Running modpar to populate these bounds.")
@@ -669,17 +669,17 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         xyE <- xy
         maxIval<- try(max(xyE$x, na.rm = TRUE) - 
         	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
-        if(class(maxIval)[1] == "try-error") maxIval <- max(xy$x, na.rm=TRUE)  
+        if(inherits((maxIval),"try-error")) maxIval <- max(xy$x, na.rm=TRUE)  
     } else {
         xyE <- subset(xy, xy$x <= Intage)
         maxIval<- try(max(xyE$x, na.rm = TRUE) - 
         	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
-        if(class(maxIval)[1] == "try-error") maxIval <- max(xy$x, na.rm=TRUE)      
+        if(inherits((maxIval), "try-error")) maxIval <- max(xy$x, na.rm=TRUE)      
         xyL <- data.frame(rep(NA, 1))
 	xyL <- subset(xy, xy$x >= Intage)
         maxRival<- try(max(xyL$x, na.rm = TRUE) - 
         	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
-  	if(class(maxRival)[1] == "try-error") maxRival <- max(xy$x, na.rm=TRUE)        
+  	if(inherits((maxRival), "try-error")) maxRival <- max(xy$x, na.rm=TRUE)        
     }
     if (nrow(xyE) < 5) {
         stop("ERROR: too few distinct input values to fit the positive Richards model, aborting")
@@ -885,7 +885,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 	    findi <- try(subdati$x[ ceiling(length(subdati$x) / 2) ] , silent = TRUE)
 	    try(if( nrow(findi) == 0) findi <- indata$x[ which.max(indata$y[ indata$y <= 
 	    	(min(indata$y,na.rm = TRUE) + (rngyi / 2)) ])], silent = TRUE)
-	    if(class(findi)[1] == "try-error") findi <- indata$x[ which.max(indata$y[ indata$y <= 
+	    if(inherits((findi), "try-error")) findi <- indata$x[ which.max(indata$y[ indata$y <= 
 	    	(min(indata$y,na.rm = TRUE) + (rngyi / 2)) ])]
 	    try(
 	    if( val[indx,3] < (findi - rngi) | val[indx,3] > (findi + rngi) ) {
@@ -1255,7 +1255,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                     0.9
                   maxIval<- try(max(xyE$x, na.rm = TRUE) - 
                   	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
-       		  if(class(maxIval)[1] == "try-error") maxIval <- max(xy$x, na.rm=TRUE) 
+       		  if(inherits((maxIval), "try-error")) maxIval <- max(xy$x, na.rm=TRUE) 
             	 if( !is.na(Imax) ) {
         		if (Imax > maxIval) Imax <- maxIval
            	if(Imax < Infl) {
@@ -1302,7 +1302,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
  		  names(RMmin) <- ("RMmin")
                   maxRival<- try(max(xyL$x, na.rm = TRUE) - 
                   	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
-                  if(class(maxRival)[1] == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+                  if(inherits((maxRival), "try-error")) maxRival <- max(xy$x, na.rm=TRUE)      
 		  if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 } else {
                   names(testpar) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
@@ -1328,7 +1328,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
 		       (max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
                   maxRival<- try(max(xyL$x, na.rm = TRUE) - 
 		      (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
-		  if(class(maxRival)[1] == "try-error") maxRival <- max(xy$x, na.rm=TRUE)
+		  if(inherits((maxRival), "try-error")) maxRival <- max(xy$x, na.rm=TRUE)
              if( !is.na(Imax) ) {
        		if (Imax > maxIval) Imax <- maxIval
           	if(Imax < Infl) {
@@ -1449,7 +1449,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                         parscale = parscale1)), 
                       silent = TRUE)     
                     if (!is.na(modelparams$twocomponent.x)) {
-                      if (class(oppar)[1] == "try-error") {
+                      if (inherits((oppar), "try-error")) {
                         oppar <- savoppE
                       } else {
                         if (oppar$value > savoppE$value) 
@@ -1562,7 +1562,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
         xyL <- data.frame(rep(NA, 1))
         xyL <- subset(xy, xy$x >= Intage)
                 maxRival<- try(max(xyL$x, na.rm = TRUE) - (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
-  		if(class(maxRival)[1] == "try-error") maxRival = max(xy$x, na.rm=TRUE)
+  		if(inherits((maxRival), "try-error")) maxRival = max(xy$x, na.rm=TRUE)
         if (is.na(modelparams$twocomponent.x) == FALSE) 
             xyL <- subset(xy, xy$x > Intage)
         if (nrow(xyL) < 3 | modno == 12 | modno == 20 | modno == 
@@ -2052,7 +2052,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                       lower = inputmin, upper = inputmax, control = list(maxit = 2000)), 
                       silent = TRUE)
                     if (!is.na(modelparams$twocomponent.x)) {
-                      if (class(oppar)[1] == "try-error") {
+                      if (inherits((oppar), "try-error")) {
                         oppar <- savoppL
                       } else {
                         if (oppar$value > savoppL$value) 
@@ -2678,7 +2678,7 @@ SSposnegRichards <- structure(function(x, Asym = NA,
                     print("Warning: simultaneous optimization of pre- and post- peak curves failed, using separately fitted parameters")
                   value<-NA
                   try(eval(parse(text=paste("value<-savparR$'",which.min(savyR),"'",sep=""))),silent=T)
-                   if( class(value)[1] == "try-error" ) value <- NA
+                   if( inherits((value), "try-error" )) value <- NA
                   if( is.na(value[1]) ) value <- saveb4
                 } else {
                   finpars <- finalpars

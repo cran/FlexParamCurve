@@ -28,27 +28,27 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
     env1ck <- try(is.environment(FPCEnv$env),silent=T)
     envck <- try(is.environment(Envir),silent=T)
     env.ck<-2
-    if(envck == FALSE | class(envck)[1] == "try-error") env.ck <- (env.ck - 1)
-    if(env1ck == FALSE | class(env1ck)[1] == "try-error") env.ck <- (env.ck - 1)
+    if(envck == FALSE | inherits(envck, "try-error")) env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | inherits(env1ck, "try-error")) env.ck <- (env.ck - 1)
     if(env.ck == 2){
     	if(identical(Envir,Envir1) == F) Envir <- Envir1}
-    if(env.ck == 1 & (envck == FALSE | class(envck)[1] == "try-error")) Envir <- Envir1
+    if(env.ck == 1 & (envck == FALSE | inherits(envck, "try-error"))) Envir <- Envir1
     FPCEnv$env <- Envir
     FPCEnv$legitmodel <- "legitmodelreset"
     chk <- try(unlist(summary(submodel))["RSE"], silent = TRUE)
-    if (class(chk)[1] == "try-error" | class(submodel)[1] != "nlsList" )
+    if (inherits(chk, "try-error") | !inherits(submodel, "nlsList" ))
         submodel <- 1
     chk1 <- try(unlist(summary(genmodel))["RSE"], silent = TRUE)
-    if (class(chk1)[1] == "try-error" | class(genmodel)[1] != "nlsList" )
+    if (inherits(chk1, "try-error") | !inherits(genmodel, "nlsList" ))
         genmodel <- 1
-    if (class(submodel)[1] == "numeric" | class(genmodel)[1] ==
-        "numeric") {
-        if (class(submodel)[1] == "numeric" & class(genmodel)[1] ==
-            "numeric") {
+    if (inherits(submodel, "numeric") | inherits(genmodel,
+        "numeric")) {
+        if (inherits(submodel, "numeric") & inherits(genmodel,
+            "numeric")) {
             FPCEnv$legitmodel <- 1
         output <- data.frame(NA, NA, NA, NA, NA, NA)
         } else {        
-         if (class(submodel)[1] == "numeric") {
+         if (inherits(submodel, "numeric")) {
             is.na(submodel) <- TRUE
             FPCEnv$legitmodel <- genmodel
 	 residu <-resid(genmodel)
@@ -61,7 +61,7 @@ structure(function # Compare Two \eqn{nlsList} Models Using Extra Sum-of-Squares
          RSSa <- newRSE * df1
          output <- data.frame(NA, df1, NA, NA, RSSa, NA)
          }
-         if (class(genmodel)[1] == "numeric") {
+         if (inherits(genmodel, "numeric")) {
             is.na(genmodel) <- TRUE
             FPCEnv$legitmodel <-  submodel
 	 residu <-resid(submodel)

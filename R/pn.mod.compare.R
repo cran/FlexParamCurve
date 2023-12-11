@@ -70,12 +70,12 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
     }
     pnoptnm <- as.character(pn.options[1])
     checkpen <- try(unlist(strsplit(penaliz, "(n)")), silent = TRUE)
-    if (length(checkpen) != 2 | class(checkpen)[1] == "try-error") {
+    if (length(checkpen) != 2 | inherits(checkpen, "try-error")) {
         stop("penaliz parameter is ill defined: see ?pn.mod.compare")
     } else {
         checkpen <- try(eval(parse(text = sprintf("%s", paste(checkpen[1],
             "1", checkpen[2], sep = "")))))
-        if (class(checkpen)[1] == "try-error")
+        if (inherits(checkpen, "try-error"))
             stop("penaliz parameter is ill defined: see ?pn.mod.compare")
     }
     datamerg <- data.frame(x, y, grp)
@@ -92,8 +92,8 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         silent = TRUE)
     testpar <- try(get(pnoptnm, envir = Envir)[1:15],
         silent = TRUE)
-    if (class(testbounds)[1] == "try-error" | class(testpar)[1] ==
-        "try-error" | is.na(testbounds[1]) == TRUE | is.na(testpar[1]) ==
+    if (inherits(testbounds, "try-error") | inherits(testpar,
+        "try-error") | is.na(testbounds[1]) == TRUE | is.na(testpar[1]) ==
         TRUE)
          try({
          FPCEnv$mod.sel <- TRUE
@@ -104,13 +104,13 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
          options(warn=0)
          	}, silent = FALSE)    	
     extraF <- try(get("extraF", pos = 1), silent = TRUE)
-    if (class(extraF)[1] == "try-error") {
+    if (inherits(extraF, "try-error")) {
         stop("cannot find function: extraF - please reload FlexParamCurve")
     }
     print("checking fit of positive section of the curve for variable M*************************************")
     richardsR12.lis <- try(get(richardsR12.lis, envir = FPCEnv),
         silent = TRUE)
-    if (class(richardsR12.lis)[1] == "try-error" | existing ==
+    if (inherits(richardsR12.lis, "try-error") | existing ==
         FALSE | (12 %in% mod.subset) == TRUE)
         if(alacarte == FALSE | (12 %in% mod.subset) == TRUE){
         richardsR12.lis <- eval(parse(text=sprintf("%s",paste("try(nlsList(y ~ SSposnegRichards(x,
@@ -125,7 +125,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
     }, silent = TRUE)
     richardsR20.lis <- try(get(richardsR20.lis, envir = FPCEnv),
         silent = TRUE)
-    if (class(richardsR20.lis)[1] == "try-error" | existing ==
+    if (inherits(richardsR20.lis, "try-error") | existing ==
         FALSE | (20 %in% mod.subset) == TRUE)
         if(alacarte == FALSE | (20 %in% mod.subset) == TRUE){
         richardsR20.lis <- eval(parse(text=sprintf("%s",paste("try(nlsList(y ~ SSposnegRichards(x,
@@ -134,16 +134,16 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
     chk1 <- try({
     todump<-unlist(summary(richardsR20.lis))["RSE"]
     }, silent = TRUE)
-   if ((class(richardsR20.lis)[1]) == "try-error"| class(chk1)[1] == "try-error" 
-    	| class(richardsR20.lis)[[1]] != "nlsList" ) {
+   if (inherits(richardsR20.lis, "try-error") | inherits(chk1, "try-error") |
+    	 !inherits(richardsR20.lis, "nlsList" )) {
         print("3 parameter positive richards model failed/not fitted*************************************")
         if(forcemod != 3) forcemod = 4
         richardsR20.lis <- 1
         } else {
 	FPCEnv$richardsR20.lis <- richardsR20.lis
     							}
-    if ((class(richardsR12.lis)[1]) == "try-error" | class(chk)[1] == "try-error"
-    	| class(richardsR12.lis)[[1]] != "nlsList" )
+    if (inherits(richardsR12.lis, "try-error") | inherits(chk, "try-error") |
+    	!inherits(richardsR12.lis, "nlsList" ))
         {
             print("4 parameter positive richards model failed/not fitted*************************************")
         if(forcemod != 4)  forcemod = 3
@@ -154,7 +154,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
     currentmodel <- 1
     testmod <- try(extraF(richardsR20.lis, richardsR12.lis, warn = F), silent = TRUE)
     if (forcemod == 0) {
-        if (class(testmod)[1] == "try-error") {
+        if (inherits(testmod, "try-error")) {
             modelsig = 0.1
         } else {
             modelsig = testmod[4]
@@ -170,7 +170,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         }
     }
     mostreducedmod <- currentmodel
-    if (class(testmod)[1] != "try-error") {
+    if (!inherits(testmod, "try-error")) {
     mostreducednm <- substr("richardsR20.lis", 10,
                   11)
     mostreducedmod <- richardsR20.lis
@@ -211,7 +211,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         modnmtry <- paste('FPCEnv$richardsR', modelno,'.lis', sep = "") 
         modexist <- try( eval(parse(text=sprintf("%s", modnmtry))), silent = TRUE)
         options(warn = 0)
-        if (class(modexist)[1] == "try-error" | existing == FALSE) {
+        if (inherits(modexist, "try-error") | existing == FALSE) {
         if ((modelno %in% mod.subset) == TRUE | alacarte == FALSE) { 
             if (modelno == 1 | modelno == 21)        	 
                 mod <- try(eval(parse(text = sprintf("%s", paste("nlsList(y~SSposnegRichards(x,Asym=Asym",savK,",Infl=Infl",
@@ -293,18 +293,18 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
             mod <- try(eval(parse(text=sprintf("%s",paste("FPCEnv$",savnm,sep="")))), silent = TRUE)
             options(warn = 0)
         }
-        if (class(mod)[[1]] != "nlsList")
+        if (!inherits(mod, "nlsList"))
             mod <- NULL
         checkmod <- try(if (is.null(nrow(coef(mod))) == TRUE) {
             mod <- NULL
         }, silent = TRUE)
-        if (class(checkmod)[1] == "try-error" | class(mod)[1] ==
-            "NULL") {
+        if (inherits(checkmod, "try-error") | inherits(mod,
+            "NULL")) {
             messagesav <- (paste("**********************  Model ",
                 savnm, " has not been successfully fit, please trouble-shoot this model separately and then repeat function using existing=TRUE  *************************************************",
                 sep = ""))
         } else {
-          if(existing != FALSE & class(modexist)[1] != "try-error") {
+          if(existing != FALSE & !inherits(modexist, "try-error")) {
             messagesav <- (paste("**********************  Model ",
                                  savnm, " exists and transferred successfully to the FlexParamCurve:::FPCEnv environment   *************************************************",
                                  sep = ""))
@@ -345,7 +345,7 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         dfstr1 <- "df.residual"
         usefun <- unlist(strsplit(penaliz, "(n)"))
         FPCEnv$model1 <- try(get(modnm, envir = as.environment(FPCEnv)), silent = TRUE)
-        if(class(FPCEnv$model1)[1] == "try-error") {
+        if(inherits(FPCEnv$model1, "try-error")) {
         FPCEnv$model1 <- NULL
         checkmod <- NULL
         } else {
@@ -358,8 +358,8 @@ structure(function # Compare All Possible Positive-Negative Richards \eqn{nlslis
         evfun <- parse(text = sprintf("%s", paste("summary(FPCEnv$model1)[['",
             RSEstr, "']]*(", usefun[1], "(1+sum( summary(FPCEnv$model1)[['",
             dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
-        if (class(FPCEnv$model1)[1] == "nlsList" & class(checkmod)[1] !=
-            "try-error") {
+        if (inherits(FPCEnv$model1, "nlsList") & !inherits(checkmod,
+            "try-error")) {
             modrank[i, 2] <- eval(evfun)
             modrank[i, 3] <- nrow(subset(coef(FPCEnv$model1)[1], is.na((coef(FPCEnv$model1)[1])) ==
                 FALSE))

@@ -4,18 +4,18 @@ posnegRichardsInit <-
     env1ck <- try(is.environment(FPCEnv$env),silent=T)
     envck <- try(is.environment(Envir),silent=T)
     env.ck<-2
-    if(envck == FALSE | class(envck)[1] == "try-error") env.ck <- (env.ck - 1)
-    if(env1ck == FALSE | class(env1ck)[1] == "try-error") env.ck <- (env.ck - 1)
+    if(envck == FALSE | inherits((envck), "try-error")) env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | inherits((env1ck), "try-error")) env.ck <- (env.ck - 1)
     if(env.ck == 2) {
     modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
-     if(class(modselck)[1] != "try-error" & modselck == TRUE) {
+     if(!inherits(modselck, "try-error") & modselck == TRUE) {
     if(identical(Envir, Envir1) == FALSE & 
     	identical(Envir,.GlobalEnv) == TRUE){
     	Envir <- Envir1
     	}
     	}
     }
-    if(env.ck == 1 & (envck == FALSE | class(envck)[1] == "try-error")) Envir <- Envir1
+    if(env.ck == 1 & (envck == FALSE | inherits((envck), "try-error"))) Envir <- Envir1
     if(exists("Envir") == F) stop("Environment not previously specified - argument not
     successfully transfered: run modpar or manually assign Envir value to FPCEnv$env \n
     e.g. assign('env', FlexParamCurve:::FPCEnv, envir = FlexParamCurve:::FPCEnv")  
@@ -63,7 +63,7 @@ posnegRichardsInit <-
 	    unmatchbounds <- (names(boundsprovided) %w/o% matchbounds) %w/o% c("first.y", "x.at.first.y", "last.y", "x.at.last.y",
 		"twocomponent.x","verbose","force4par")
 	    .paramsestimated <- try( FPCEnv$.paramsestimated ,silent = TRUE)
-	    if( class(.paramsestimated)[1] == "try-error" ) .paramsestimated <- TRUE
+	    if( inherits((.paramsestimated), "try-error" )) .paramsestimated <- TRUE
 	    if(length(unmatchbounds) > 0 & .paramsestimated == TRUE ) {
 	    print("WARNING: In pn.options:  Some parameters specified are missing min/max bounds. Running modpar to populate these bounds.")
 	    print("Note: this will also populate any parameters appropriate to the specified modno that are also missing")
@@ -462,17 +462,17 @@ posnegRichardsInit <-
         xyE <- xy
         maxIval<- try(max(xyE$x, na.rm = TRUE) - 
         	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
-        if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE)  
+        if(inherits((maxIval), "try-error")) maxIval <- max(xy$x, na.rm=TRUE)  
     } else {
         xyE <- subset(xy, xy$x <= Intage)
         maxIval<- try(max(xyE$x, na.rm = TRUE) - 
         	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
-        if(class(maxIval) == "try-error") maxIval <- max(xy$x, na.rm=TRUE)      
+        if(inherits((maxIval), "try-error")) maxIval <- max(xy$x, na.rm=TRUE)      
         xyL <- data.frame(rep(NA, 1))
 	xyL <- subset(xy, xy$x >= Intage)
         maxRival<- try(max(xyL$x, na.rm = TRUE) - 
         	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
-  	if(class(maxRival) == "try-error") maxRival <- max(xy$x, na.rm=TRUE)        
+  	if(inherits((maxRival), "try-error")) maxRival <- max(xy$x, na.rm=TRUE)        
     }
     if (nrow(xyE) < 5) {
         stop("ERROR: too few distinct input values to fit the positive Richards model, aborting")
@@ -700,7 +700,7 @@ posnegRichardsInit <-
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05) 
                 Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck)[1] == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+            if(inherits((kcheck), "try-error")) stop ("Optimized parameters incompatable, aborting fit")
                 if (Kmin > (-1e-05)) 
                 Kmin = (-1e-05)
             if (modno == 17) {
@@ -761,7 +761,7 @@ posnegRichardsInit <-
             Kmin = K - (abs(K) * 0.25)
  	    kcheck <- try({if (Kmin < 1e-05) 
                 Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck)[1] == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+            if(inherits((kcheck), "try-error")) stop ("Optimized parameters incompatable, aborting fit")
             if (Kmin > (-1e-05)) 
                 Kmin = (-1e-05)
             Imax = Imax - (abs(Imax - Infl) * 0.75)
@@ -860,7 +860,7 @@ posnegRichardsInit <-
                     0.9
                   maxIval<- try(max(xyE$x, na.rm = TRUE) - 
                   	(max(diff( range(xyE$x, na.rm = TRUE))*.05)), silent=TRUE)
-       		  if(class(maxIval)[1] == "try-error") maxIval <- max(xy$x, na.rm=TRUE) 
+       		  if(inherits((maxIval), "try-error")) maxIval <- max(xy$x, na.rm=TRUE) 
        		  if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
                   if (abs(M) < 0.1) {
                     Mmax = 0.5
@@ -895,7 +895,7 @@ posnegRichardsInit <-
  		  names(RMmin) <- ("RMmin")
                   maxRival<- try(max(xyL$x, na.rm = TRUE) - 
                   	(max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
-                  if(class(maxRival)[1] == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+                  if(inherits((maxRival), "try-error")) maxRival <- max(xy$x, na.rm=TRUE)      
 		  if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 } else {
                   names(testpar) <- c("Amin", "Amax", "Kmin", "Kmax", "Imin",
@@ -922,7 +922,7 @@ posnegRichardsInit <-
        		
                   maxRival<- try(max(xyL$x, na.rm = TRUE) - 
 		      (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)  
-		  if(class(maxRival)[1] == "try-error") maxRival <- max(xy$x, na.rm=TRUE)      
+		  if(inherits((maxRival), "try-error")) maxRival <- max(xy$x, na.rm=TRUE)      
                   if( !is.na(Imax) ) {if (Imax > maxIval) Imax <- maxIval}
                   if( !is.na(Rimax) ) {if (Rimax > maxRival) Rimax <- maxRival}
                 }
@@ -960,7 +960,7 @@ posnegRichardsInit <-
             if (Infl >= Imax) Infl = Imax - ((Imax - min(xy$x, na.rm=TRUE)) * 0.95)
             kcheck <- try({if (Kmin < 1e-05 & Kmin > -1e-05) 
                			 Kmin = 1e-05 * sign(Kmin)},silent = TRUE)
-	    if(class(kcheck)[1] == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+	    if(inherits((kcheck), "try-error")) stop ("Optimized parameters incompatable, aborting fit")
             savminx <- min(xyE$x)
             savmaxx <- max(xyE$x)
             try(oppar <- optim(c(Asym, K, Infl, M), func1, method = "L-BFGS-B", 
@@ -1001,7 +1001,7 @@ posnegRichardsInit <-
                         parscale = c(10000, 0.01, 100, 10))), 
                       silent = TRUE)
                     if (!is.na(modelparams$twocomponent.x)) {
-                      if (class(oppar)[1] == "try-error") {
+                      if (inherits((oppar), "try-error")) {
                         oppar <- savoppE
                       } else {
                         if (oppar$value > savoppE$value) 
@@ -1048,7 +1048,7 @@ posnegRichardsInit <-
             Kmin = K - (abs(K) * 0.25)
  	    kcheck <- try({if (Kmin < 1e-05) 
                 Kmin = 1e-05},silent = TRUE)
-            if(class(kcheck)[1] == "try-error") stop ("Optimized parameters incompatable, aborting fit")
+            if(inherits((kcheck), "try-error")) stop ("Optimized parameters incompatable, aborting fit")
             if (Kmin > (-1e-05)) 
             Kmin = (-1e-05)
             Imax = Infl + (abs(Infl) * 5)
@@ -1088,7 +1088,7 @@ posnegRichardsInit <-
         xyL <- data.frame(rep(NA, 1))
         xyL <- subset(xy, xy$x >= Intage)
                 maxRival<- try(max(xyL$x, na.rm = TRUE) - (max(diff( range(xyL$x, na.rm = TRUE))*.05)), silent=TRUE)
-  		if(class(maxRival)[1] == "try-error") maxRival = max(xy$x, na.rm=TRUE)
+  		if(inherits((maxRival), "try-error")) maxRival = max(xy$x, na.rm=TRUE)
         if (is.na(modelparams$twocomponent.x) == FALSE) 
             xyL <- subset(xy, xy$x > Intage)
         if (nrow(xyL) < 3 | modno == 12 | modno == 20 | modno == 
@@ -1517,7 +1517,7 @@ posnegRichardsInit <-
                       lower = inputmin, upper = inputmax, control = list(maxit = 2000)), 
                       silent = TRUE)
                     if (!is.na(modelparams$twocomponent.x)) {
-                      if (class(oppar)[1] == "try-error") {
+                      if (inherits((oppar), "try-error")) {
                         oppar <- savoppL
                       } else {
                         if (oppar$value > savoppL$value) 

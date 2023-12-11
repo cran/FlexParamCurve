@@ -394,7 +394,7 @@ parameter estimates, fitting options and bounds}
 
      x of intersection can be set directly by setting
 
-     twocomponent.x = # (where # is the x of intersection). Whne \{code{\link{modpar}}
+     twocomponent.x = # (where # is the x of intersection). When \code{\link{modpar}}
 
      is run this option will be saved in \code{pnmodelparas} and can be changed at will,
 

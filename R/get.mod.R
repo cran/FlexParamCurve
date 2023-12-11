@@ -1,8 +1,8 @@
 get.mod <-
 structure(function # Copy objects between R environments
-                   (modelname=ls(FlexParamCurve:::FPCEnv,pattern=".lis"),
+                   (modelname=ls(FPCEnv,pattern=".lis"),
                     ### a list of object names
-                    from.envir = FlexParamCurve:::FPCEnv,
+                    from.envir = FPCEnv,
                     ### R environment currently containing the object(s)
                     to.envir=.GlobalEnv,
                     ### destination R environment to copy the object(s) to

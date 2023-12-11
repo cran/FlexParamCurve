@@ -42,18 +42,18 @@ structure(function
     env1ck <- try(is.environment(FPCEnv$env),silent=T)
     envck <- try(is.environment(Envir),silent=T)
     env.ck<-2
-    if(envck == FALSE | class(envck)[1] == "try-error") env.ck <- (env.ck - 1)
-    if(env1ck == FALSE | class(env1ck)[1] == "try-error") env.ck <- (env.ck - 1)
+    if(envck == FALSE | inherits(envck, "try-error")) env.ck <- (env.ck - 1)
+    if(env1ck == FALSE | inherits(env1ck, "try-error")) env.ck <- (env.ck - 1)
     if(env.ck == 2) {
     modselck<- try(get("mod.sel", envir = FPCEnv), silent =T)
-    if(class(modselck)[1] != "try-error" & modselck == TRUE) {
+    if(!inherits(modselck, "try-error") & modselck == TRUE) {
     if(identical(Envir, Envir1) == FALSE & 
     	identical(Envir,.GlobalEnv) == TRUE){
     	Envir <- Envir1
     	}
     	}
     }
-    if(env.ck == 1 & (envck == FALSE | class(envck)[1] == "try-error")) Envir <- Envir1
+    if(env.ck == 1 & (envck == FALSE | inherits(envck, "try-error"))) Envir <- Envir1
     FPCEnv$env <- Envir
     FPCEnv$.paramsestimated <- FALSE
     if(!is.na(pn.options)) {
@@ -192,29 +192,29 @@ structure(function
     	             silent = detl)
       savvalue<-value
        value <-NA
-      if(class(value)[1] == "try-error") stop ("Bounds unestimable")
+      if(inherits(value, "try-error")) stop ("Bounds unestimable")
       savoptions <- get(pnoptnm, envir = Envir)
     prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
        value <- try(parseval("coef(nls(y ~ SSposnegRichards(x, Asym = Asym,
                     K = K, Infl = Infl, M = M, modno = 12, pn.options =",  pnoptnm,"), data = xy, ...))")
          		, silent = detl)
-         if(is.na(value[1]) == FALSE & class(value)[1] != "try-error") {
+         if(is.na(value[1]) == FALSE & !inherits(value, "try-error")) {
          prntqut( suppress.text, "4 parameter nls fit successful")
          }
-         if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
+         if(is.na(value[1]) == TRUE | inherits(value, "try-error")) {
           prntqut( suppress.text, "....4-parameter nls fit failed")
           prntqut( suppress.text, "(4) Status of 4-parameter Richards getInitial call:")
          value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
 	             K = K, Infl = Infl, M = M, modno = 12,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
 	             silent = detl)
-            if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
+            if(is.na(value[1]) == TRUE | inherits(value, "try-error")) {
             stop("estimates not available for data provided. Please check data, call or provide estimates manually, see ?modpar")
             FPCEnv$.paramsestimated <- FALSE
          					} else {					
          					prntqut( suppress.text, "....4 parameter getInitial successful")
          					}
          }
-  if(!is.na(value[1]) & class(value)[1] != "try-error" & !is.na(savvalue[1]) & class(savvalue)[1] != "try-error") 
+  if(!is.na(value[1]) & !inherits(value, "try-error") & !is.na(savvalue[1]) & !inherits(savvalue, "try-error") )
   	value<-evlfit(savvalue,value,force8par,savoptions)
     }else{
     if(detl == FALSE) prntqut( suppress.text, "Estimating parameter bounds....")
@@ -222,11 +222,11 @@ structure(function
                 K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
             Ri = Ri, RM = RM, modno = 18,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
             silent = detl)
-     if (is.na(value[1]) == TRUE | class(value)[1] == "try-error"){
+     if (is.na(value[1]) == TRUE | inherits(value, "try-error")){
         value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
          	             K = K, Infl = Infl, M = M, modno = 19,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
          	             silent = detl)
-             if(class(value)[1] == "try-error") stop ("Bounds unestimable")
+             if(inherits(value, "try-error")) stop ("Bounds unestimable")
             bndsvals<-get(pnoptnm, envir = Envir) 
             initval[1:8] <- value
             initval[13]<-bndsvals[13]
@@ -235,7 +235,7 @@ structure(function
             valexp <- formtassign( initval , bndsvals)				  
 	    assign(pnoptnm, valexp, envir = Envir)
             			} else {     
-      if(class(value)[1] == "try-error") stop ("Bounds unestimable")
+      if(inherits(value, "try-error")) stop ("Bounds unestimable")
     savvalue<-value
       value <-NA
       savoptions <- get(pnoptnm, envir = Envir)    							}
@@ -245,14 +245,14 @@ structure(function
         K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk, Ri = Ri,
         RM = RM, modno = 1, pn.options =",  pnoptnm,"), data = xy, ...)), silent = detl)"),
         silent=detl)
-    if (is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
+    if (is.na(value[1]) == TRUE | inherits(value, "try-error")) {
         prntqut( suppress.text, "....8 parameter nls fit failed")
         prntqut( suppress.text, "(2) Status of 8-parameter double-Richards getInitial call")
         value <- try(parseval("try(getInitial(y ~ SSposnegRichards(x, Asym = Asym,
             K = K, Infl = Infl, M = M, RAsym = RAsym, Rk = Rk,
             Ri = Ri, RM = RM, modno = 1,  pn.options =",  pnoptnm,"), data = xy), silent = detl)"),
             silent = detl)
-             if (is.na(value[1]) == FALSE & class(value)[1] != "try-error") {
+             if (is.na(value[1]) == FALSE & !inherits(value, "try-error")) {
              		succ <- TRUE
              		prntqut( suppress.text, "....8-parameter getInitial successful")
              		}
@@ -260,9 +260,9 @@ structure(function
         prntqut( suppress.text, "....8-parameter nls fit successful")
         succ <- TRUE
     }
-    if(!is.na(value[1]) & class(value)[1] != "try-error" & !is.na(savvalue[1]) & class(savvalue)[1] != "try-error") 
+    if(!is.na(value[1]) & !inherits(value, "try-error") & !is.na(savvalue[1]) & !inherits(savvalue, "try-error")) 
     	value<-try(evlfit(savvalue,value,force8par,savoptions), silent = detl)
-    if ((is.na(value[1]) == TRUE & is.na(twocomponent.x)) | (class(value)[1] == "try-error" & is.na(twocomponent.x)) ) {
+    if ((is.na(value[1]) == TRUE & is.na(twocomponent.x)) | (inherits(value, "try-error") & is.na(twocomponent.x)) ) {
         prntqut( suppress.text, "(3) Status of 4-parameter Richards curve nls fit:")
         prntqut( suppress.text, "if force8par==TRUE second curve parameters estimated as RAsym=Asym*0.05, Rk=K, Ri=Infl, RM=M")
          try({
@@ -276,7 +276,7 @@ structure(function
                   "Rk", "Ri", "RM")
             }
         }, silent = detl)
-        if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") {
+        if(is.na(value[1]) == TRUE | inherits(value, "try-error")) {
           prntqut( suppress.text, "....4-parameter nls fit failed")
           prntqut( suppress.text, "(4) Status of 4-parameter Richards getInitial call:")
           try({
@@ -289,11 +289,11 @@ structure(function
 	        "Rk", "Ri", "RM")
 	     }
           }, silent = detl)
-          if(is.na(value[1]) == TRUE | class(value)[1] == "try-error") prntqut( suppress.text, "....4 parameter getInitial failed")
+          if(is.na(value[1]) == TRUE | inherits(value, "try-error")) prntqut( suppress.text, "....4 parameter getInitial failed")
         } else {
         prntqut( suppress.text, "....4 parameter nls successful")
         }
-        if(is.na(value[1]) == TRUE | class(value)[1] == "try-error")
+        if(is.na(value[1]) == TRUE | inherits(value, "try-error"))
             stop("**Estimates not available for data provided**. Please check data or provide estimates manually, see ?modpar")
     } else {
          if (succ != TRUE)

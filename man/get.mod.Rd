@@ -8,9 +8,9 @@
 
 \usage{
 
-get.mod(modelname = ls( FlexParamCurve:::FPCEnv, pattern=".lis" ),
+get.mod(modelname = ls(FPCEnv, pattern=".lis" ),
 
- from.envir = FlexParamCurve:::FPCEnv, to.envir = .GlobalEnv,
+ from.envir = FPCEnv, to.envir = .GlobalEnv,
 
  write.mod = FALSE, silent = FALSE)
 

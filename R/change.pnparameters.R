@@ -46,7 +46,7 @@ structure(function
     pnoptnm<- as.character( pn.options[1] ) 
     if(as.character(list(Envir)) != "<environment>") stop ("No such environment")
     adjmodelparams <- try(get(pnoptnm, envir = Envir),silent=T)
-    if( class(adjmodelparams)[1] == "try-error" ) stop(paste(pnoptnm," not found in specified
+    if( inherits(adjmodelparams, "try-error" )) stop(paste(pnoptnm," not found in specified
     	environment. To search package environment do not specify an Envir value",sep=""))
      for (i in 1:9) {
         if (is.na(newparams[i]) == FALSE)

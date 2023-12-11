@@ -82,12 +82,12 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    pnoptm=NULL
 	    pnoptnm <- as.character(pn.options)
 	    checkpen <- try(unlist(strsplit(penaliz, "(n)")), silent = TRUE)
-	    if (length(checkpen) != 2 | class(checkpen)[1] == "try-error") {
+	    if (length(checkpen) != 2 | inherits((checkpen), "try-error")) {
 		stop("penaliz parameter is ill defined: see ?pn.mod.compare")
 	    } else {
 		checkpen <- try(eval(parse(text = sprintf("%s", paste(checkpen[1],
 		    "1", checkpen[2], sep = "")))))
-		if (class(checkpen)[1] == "try-error")
+		if (inherits((checkpen), "try-error"))
 		    stop("penaliz parameter is ill defined: see ?pn.mod.compare")
 	    }
 	    datamerg <- data.frame(x, y, grp)
@@ -104,8 +104,8 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		silent = T)
 	    testpar <- try(get(pnoptnm, envir = Envir)[1:15],
 		silent = T)
-	    if (class(testbounds)[1] == "try-error" | class(testpar)[1] ==
-		"try-error" | is.na(testbounds[1]) == TRUE | is.na(testpar[1]) ==
+	    if (inherits((testbounds), "try-error") | inherits((testpar)[1],
+		"try-error") | is.na(testbounds[1]) == TRUE | is.na(testpar[1]) ==
 		TRUE)
        	    try({
        	        FPCEnv$mod.sel <- TRUE
@@ -116,14 +116,14 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
         	options(warn=0)
         	}, silent = FALSE)    
 	    extraF <- try(get("extraF", pos = 1), silent = TRUE)
-	    if (class(extraF)[1] == "try-error") {
+	    if (inherits((extraF), "try-error")) {
 		stop("cannot find function: extraF - please reload FlexParamCurve")
 	    }
 	    mostreducedmod<-1
 	    print("checking fit of positive section of the curve for variable M*************************************")
 	    richardsR12.lis <- try(FPCEnv$richardsR12.lis,
 		silent = TRUE)
-	    if (class(richardsR12.lis)[1] == "try-error" | existing ==
+	    if (inherits((richardsR12.lis), "try-error") | existing ==
 		FALSE)
 		richardsR12.lis <- eval(parse(text=sprintf("%s",paste("try(nlsList(y ~ SSposnegRichards(x,
 		            Asym = Asym, K = K, Infl = Infl, M = M, modno = 12, pn.options = ",pnoptnm, "), data = userdata),
@@ -135,22 +135,22 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
    	    chk <- try(unlist(summary(richardsR12.lis))["RSE"], silent = TRUE)
 	    richardsR20.lis <- try(FPCEnv$richardsR20.lis,
 		silent = TRUE)
-	    if (class(richardsR20.lis)[1] == "try-error" | existing ==
+	    if (inherits((richardsR20.lis), "try-error") | existing ==
 		FALSE)
 		richardsR20.lis <- eval(parse(text=sprintf("%s",paste("try(nlsList(y ~ SSposnegRichards(x,
 		            Asym = Asym, K = K, Infl = Infl, modno = 20, pn.options = ",pnoptnm,"), data = userdata),
             silent = TRUE)",sep=""))))
 	    chk1 <- try(unlist(summary(richardsR20.lis))["RSE"], silent = TRUE)     
-	    if ((class(richardsR20.lis)[1]) == "try-error" | class(richardsR20.lis)[[1]] != "nlsList" 
-	    	| class(chk1)[1] == "try-error") {
+	    if (inherits((richardsR20.lis), "try-error") | !inherits((richardsR20.lis)[[1]], "nlsList" ) |
+	    	 inherits((chk1), "try-error")) {
 	        print("3 parameter positive richards model failed/not fitted*************************************")
                 if(forcemod != 3) forcemod = 4
 		richardsR20.lis <- 1
 		} else {
 		FPCEnv$richardsR20.lis <- richardsR20.lis
 	    					}
-	    if ((class(richardsR12.lis)[1]) == "try-error" | class(richardsR12.lis)[[1]] != "nlsList" 
-	    	| class(chk)[1] == "try-error")
+	    if (inherits((richardsR12.lis), "try-error") | !inherits((richardsR12.lis)[[1]], "nlsList" ) |
+	    	 inherits((chk), "try-error"))
 		{
                 print("4 parameter positive richards model failed/not fitted*************************************")
                 if(forcemod != 4)  forcemod = 3
@@ -161,7 +161,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 	    currentmodel <- 1
 	    testmod <- try(extraF(richardsR20.lis, richardsR12.lis, warn = F))
 	    if (forcemod == 0) {
-				if (class(testmod)[1] == "try-error") {
+				if (inherits((testmod), "try-error")) {
 		    modelsig = 0.1
 		} else {
 		    modelsig = testmod[4]
@@ -177,7 +177,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		}
 	    }
             mostreducedmod <- currentmodel
-            if (class(testmod)[1] != "try-error") {
+            if (!inherits((testmod), "try-error")) {
             mostreducednm <- substr("richardsR20.lis", 10,
                   11)
             mostreducedmod <- richardsR20.lis
@@ -205,26 +205,26 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		nm[2] <- (as.character(substitute(model2)))
 		nm[3] <- (as.character(substitute(model3)))
 		nm[4] <- (as.character(substitute(model4)))
-		if (class(model1)[[1]] == "nlsList" & class(model1)[1] !=
-		    "try-error") {
+		if (inherits((model1), "nlsList") & !inherits((model1),
+		    "try-error")) {
 		    if (is.null(nrow(coef(model1))) == TRUE) {
 			model1 <- 1
 		    }
 		}
-		if (class(model2)[[1]] == "nlsList" & class(model2)[1] !=
-		    "try-error") {
+		if (inherits((model2), "nlsList") & !inherits((model2),
+		    "try-error")) {
 		    if (is.null(nrow(coef(model2))) == TRUE) {
 			model2 <- 1
 		    }
 		}
-		if (class(model3)[[1]] == "nlsList" & class(model3)[1] !=
-		    "try-error") {
+		if (inherits((model3), "nlsList") & !inherits((model3),
+		    "try-error")) {
 		    if (is.null(nrow(coef(model3))) == TRUE) {
 			model3 <- 1
 		    }
 		}
-		if (class(model4)[[1]] == "nlsList" & class(model4)[1] !=
-		    "try-error") {
+		if (inherits((model4), "nlsList") & !inherits((model4),
+		    "try-error")) {
 		    if (is.null(nrow(coef(model4))) == TRUE) {
 			model4 <- 1
 		    }
@@ -235,8 +235,8 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		RSEstr <- "RSE"
 		dfstr <- "df"
 		usefun <- unlist(strsplit(penaliz, "(n)"))
-		if (class(model1)[[1]] == "nlsList" & class(model1)[1] !=
-		    "try-error") {
+		if (inherits((model1), "nlsList") & !inherits((model1),
+		    "try-error")) {
         		evfun <- parse(text = sprintf("%s", paste("summary(model1)[['",
            		 RSEstr, "']]*(", usefun[1], "(1+sum( summary(model1)[['",
            		 dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
@@ -244,8 +244,8 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		} else {
 		    nomods = nomods - 1
 		}
-		if (class(model2)[[1]] == "nlsList" & class(model2)[1] !=
-		    "try-error") {
+		if (inherits((model2)[[1]], "nlsList") & !inherits((model2)[1],
+		    "try-error")) {
       			  evfun <- parse(text = sprintf("%s", paste("summary(model2)[['",
          			RSEstr, "']]*(", usefun[1], "(1+sum( summary(model2)[['",
           		 	 dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
@@ -253,16 +253,16 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		} else {
 		    nomods = nomods - 1
 		}
-		if (class(model3)[[1]] == "nlsList" & class(model3)[1] !=
-		    "try-error") {
+		if (inherits((model3)[[1]], "nlsList") & !inherits((model3)[1],
+		    "try-error")) {
 		          evfun <- parse(text = sprintf("%s", paste("summary(model3)[['",
 		               RSEstr, "']]*(", usefun[1], "(1+sum( summary(model3)[['",
            			dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
 		} else {
 		    nomods = nomods - 1
 		}
-		if (class(model4)[[1]] == "nlsList" & class(model4)[1] !=
-		    "try-error") {
+		if (inherits((model4)[[1]], "nlsList") & !inherits((model4)[1],
+		    "try-error")) {
         		evfun <- parse(text = sprintf("%s", paste("summary(model4)[['",
          		   RSEstr, "']]*(", usefun[1], "(1+sum( summary(model4)[['",
           		  dfstr, "']],na.rm=TRUE)))", usefun[2], sep = "")))
@@ -321,8 +321,8 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		FPCEnv$tempmodnm <- modname
 		modobj <- try(get(as.character(substitute(modname)),envir = pcklib)
 		, silent = TRUE)
-		if (class(modobj)[1] == "try-error" | existing == FALSE |
-		    class(modobj)[1] == "NULL") {
+		if (inherits((modobj), "try-error") | existing == FALSE |
+		    inherits(modobj, "NULL")) {
 		    outp <- TRUE
 		} else {
 		    outp <- FALSE
@@ -333,17 +333,17 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		modname <- as.character(substitute(modname))
 		modobj <- try(get(as.character(substitute(modname)),envir = pcklib)
 		, silent = TRUE)
-		if (class(modobj)[1] == "try-error" | existing == FALSE) {
+		if (inherits((modobj), "try-error") | existing == FALSE) {
 		} else {
 		    return(modobj)
 		}
 	    }
 	    rnassign <- function() {
 		modname <- parse(text = sprintf("%s", FPCEnv$tempmodnm))
-		if (class(eval(modname)[1]) != "try-error") {
+		if (!inherits((eval(modname)[1]), "try-error")) {
 		    chk <- try(unlist(summary(eval(modname)))["RSE"],
 			silent = TRUE)
-		    if (class(chk)[1] == "try-error") {
+		    if (inherits((chk), "try-error")) {
 			return(1)
 		    } else {
 			modnm <- sprintf("%s", FPCEnv$tempmodnm)
@@ -409,7 +409,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			      data = userdata, ...)
 			  }, silent = TRUE)",sep=""))))
 			currentmodel <- rnassign()
-			if (class(currentmodel)[1] != "numeric")
+			if (!inherits(currentmodel, "numeric"))
 			  step1submod <- TRUE
 		    }
 		    if (cnt == 2) {
@@ -1103,7 +1103,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 			      data = userdata, ...)
 			  }, silent = TRUE)",sep=""))))
 			currentmodel <- rnassign()
-			if (class(currentmodel)[1] != "numeric")
+			if (!inherits(currentmodel, "numeric"))
 			  step1submod <- TRUE
 		    }
 		    if (cnt == 2) {
@@ -1843,7 +1843,7 @@ structure(function # Backwards Stepwise Selection of Positive-Negative Richards 
 		    options(warn = -1)
 		    assessfits <- try( eval(parse(text = sprintf("%s", paste("step",
 		  i, "stat", sep = "")))),silent = TRUE)
-		    if (class(assessfits)[1] != "try-error") countfit <- countfit + 1
+		    if (!inherits((assessfits), "try-error")) countfit <- countfit + 1
 		    if (i == 6 & countfit == 0) stop("No models were successfully fitted. Aborting..... Please check your data or change argument options.")
 		    currstat <- eval(parse(text = sprintf("%s", (paste("step",
 			i, "stat", sep = "")))))
